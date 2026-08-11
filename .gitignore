@@ -38,6 +38,7 @@ test-output.xml
 .data
 data/cn_etf/
 data/cn_etf_smoke/
+data/cn_etf_sina_smoke/
 
 # special software
 mlruns/

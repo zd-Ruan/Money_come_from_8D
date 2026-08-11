@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
+import pytest
 
 
 COLLECTOR_PATH = (
@@ -46,10 +47,12 @@ def test_normalize_frame_matches_qlib_factor_contract():
             "pct_change": [0.0, 4.878],
             "price_change": [0.0, 0.2],
             "turnover_rate": [0.01, 0.012],
-            "qfq_open": [2.0, 4.2],
-            "qfq_close": [2.05, 4.3],
-            "qfq_high": [2.1, 4.4],
-            "qfq_low": [1.95, 4.1],
+            "adj_open": [2.0, 4.2],
+            "adj_close": [2.05, 4.3],
+            "adj_high": [2.1, 4.4],
+            "adj_low": [1.95, 4.1],
+            "data_source": ["sina", "sina"],
+            "amount_quality": ["reported", "reported"],
         }
     )
     normalized = collector.normalize_frame(raw)
@@ -73,17 +76,19 @@ def test_invalid_ohlc_and_zero_volume_are_removed():
             "volume": [100.0, 100.0, 0.0],
             "amount": [100.0, 100.0, 0.0],
             "turnover_rate": [0.01, 0.01, 0.0],
-            "qfq_open": [1.0, 1.0, 1.0],
-            "qfq_close": [1.0, 1.0, 1.0],
-            "qfq_high": [1.1, 1.1, 1.1],
-            "qfq_low": [0.9, 0.9, 0.9],
+            "adj_open": [1.0, 1.0, 1.0],
+            "adj_close": [1.0, 1.0, 1.0],
+            "adj_high": [1.1, 1.1, 1.1],
+            "adj_low": [0.9, 0.9, 0.9],
+            "data_source": ["sina"] * 3,
+            "amount_quality": ["reported"] * 3,
         }
     )
-    normalized = collector.normalize_frame(raw)
-    assert normalized["date"].dt.strftime("%Y-%m-%d").tolist() == ["2026-08-07"]
+    with pytest.raises(ValueError, match="invalid raw/adjusted OHLC"):
+        collector.normalize_frame(raw)
 
 
-def test_tencent_qfq_request_accepts_day_key_when_no_adjustment_exists():
+def test_tencent_hfq_request_accepts_day_key_when_no_adjustment_exists():
     class FakeResponse:
         def raise_for_status(self):
             return None
@@ -105,5 +110,26 @@ def test_tencent_qfq_request_accepts_day_key_when_no_adjustment_exists():
     frame = collector.fetch_history_tencent(
         FakeSession(), "SH510040", date(2005, 1, 1), date(2026, 8, 10), adjusted=True
     )
-    assert frame.loc[0, "qfq_close"] == 1.193
+    assert frame.loc[0, "adj_close"] == 1.193
     assert frame.loc[0, "symbol"] == "SH510040"
+
+
+def test_sina_cash_distribution_becomes_positive_multiplicative_return():
+    prices = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2026-01-01", "2026-01-02"]),
+            "close": [1.0, 0.91],
+        }
+    )
+    factors = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["1900-01-01", "2026-01-02"]),
+            "f": [1.0, 1.0],
+            "s": [1.0, 1.0],
+            "u": [0.0, 0.1],
+        }
+    )
+    multiplier = collector._sina_total_return_multiplier(prices, factors)
+    adjusted = prices["close"] * multiplier
+    assert np.allclose(multiplier, [1.0, 1.0 / 0.9])
+    assert np.isclose(adjusted.pct_change().iloc[1], 0.91 / 0.9 - 1.0)

@@ -53,11 +53,11 @@ def load_representative_series(data_dir: Path, symbols: list[str], start: str = 
         path = data_dir / "raw" / f"{symbol.lower()}.csv"
         if not path.exists():
             continue
-        frame = pd.read_csv(path, usecols=["date", "symbol", "qfq_close"], parse_dates=["date"])
+        frame = pd.read_csv(path, usecols=["date", "symbol", "adj_close"], parse_dates=["date"])
         frame = frame[frame["date"] >= pd.Timestamp(start)].copy()
         if frame.empty:
             continue
-        frame["rebased_close"] = frame["qfq_close"] / frame["qfq_close"].iloc[0] * 100.0
+        frame["rebased_close"] = frame["adj_close"] / frame["adj_close"].iloc[0] * 100.0
         rows.append(frame)
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 

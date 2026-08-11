@@ -16,6 +16,7 @@ import logging
 import math
 import random
 import shutil
+import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -44,6 +45,8 @@ HISTORY_URLS = (
     "https://7.push2his.eastmoney.com/api/qt/stock/kline/get",
 )
 TENCENT_HISTORY_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+SINA_HISTORY_URL = "https://finance.sina.com.cn/realstock/company/{}/hisdata_klc2/klc_kl.js"
+SINA_HFQ_FACTOR_URL = "https://finance.sina.com.cn/realstock/company/{}/hfq.js"
 EASTMONEY_TOKEN = "7eea3edcaed734bea9cbfc24409ed989"
 T1_FUND_TYPE = "指数型-股票"
 
@@ -60,10 +63,10 @@ RAW_COLUMNS = [
     "pct_change",
     "price_change",
     "turnover_rate",
-    "qfq_open",
-    "qfq_close",
-    "qfq_high",
-    "qfq_low",
+    "adj_open",
+    "adj_close",
+    "adj_high",
+    "adj_low",
     "data_source",
     "amount_quality",
 ]
@@ -283,7 +286,7 @@ def _parse_kline(payload: dict, symbol: str, adjusted: bool) -> pd.DataFrame:
     frame["symbol"] = symbol
     if adjusted:
         return frame[["date", "symbol", "open", "close", "high", "low"]].rename(
-            columns={column: f"qfq_{column}" for column in ("open", "close", "high", "low")}
+            columns={column: f"adj_{column}" for column in ("open", "close", "high", "low")}
         )
     frame["volume"] = frame["volume_lots"] * 100.0
     frame["turnover_rate"] = frame["turnover_rate_pct"] / 100.0
@@ -322,12 +325,172 @@ def fetch_history_eastmoney(
         "fields1": "f1,f2,f3,f4,f5,f6",
         "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
         "klt": 101,
-        "fqt": 1 if adjusted else 0,
+        # Back-adjusted prices remain positive on long-lived dividend ETFs.
+        "fqt": 2 if adjusted else 0,
         "beg": start_date.strftime("%Y%m%d"),
         "end": end_date.strftime("%Y%m%d"),
     }
     payload = _request_json(session, HISTORY_URLS, params)
     return _parse_kline(payload, symbol, adjusted)
+
+
+def _decode_sina_klc(encoded: str) -> list[dict]:
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("Sina history decoding requires Node.js on PATH")
+    decoder_path = CUR_DIR / "sina_decode.js"
+    decoder = decoder_path.read_text(encoding="utf-8")
+    script = decoder + "\nprocess.stdout.write(JSON.stringify(d(" + json.dumps(encoded) + ")));"
+    result = subprocess.run(
+        [node],
+        input=script,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        timeout=45,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Sina KLC decode failed: {result.stderr.strip()}")
+    rows = json.loads(result.stdout)
+    if not isinstance(rows, list):
+        raise ValueError("Sina KLC decoder returned a non-list payload")
+    return rows
+
+
+def _parse_sina_factor_payload(text: str) -> pd.DataFrame:
+    start = text.find("{")
+    end = text.find("/*", start)
+    if end < 0:
+        end = text.rfind("}") + 1
+    if start < 0 or end <= start:
+        raise ValueError("invalid Sina adjustment factor payload")
+    records = (json.loads(text[start:end].strip()).get("data") or [])
+    if not records:
+        raise ValueError("empty Sina adjustment factor payload")
+    factors = pd.DataFrame(records).rename(columns={"d": "date"})
+    required = ["date", "f", "s", "u"]
+    if not set(required).issubset(factors.columns):
+        raise ValueError(f"Sina adjustment factors lack columns: {required}")
+    factors["date"] = pd.to_datetime(factors["date"], errors="coerce")
+    factors[["f", "s", "u"]] = factors[["f", "s", "u"]].apply(pd.to_numeric, errors="coerce")
+    factors = factors.dropna(subset=required).drop_duplicates("date", keep="last").sort_values("date")
+    if factors.empty or (factors[["f", "s"]] <= 0).any().any():
+        raise ValueError("invalid Sina adjustment factors")
+    return factors[required].reset_index(drop=True)
+
+
+def fetch_sina_factors(session: requests.Session, symbol: str) -> pd.DataFrame:
+    sina_symbol = symbol.lower()
+    response = session.get(
+        SINA_HFQ_FACTOR_URL.format(sina_symbol),
+        headers={"Referer": f"https://finance.sina.com.cn/realstock/company/{sina_symbol}/nc.shtml"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return _parse_sina_factor_payload(response.text)
+
+
+def _sina_total_return_multiplier(prices: pd.DataFrame, factors: pd.DataFrame) -> pd.Series:
+    """Convert Sina's affine hfq events into a positive reinvested-return multiplier."""
+    merged = pd.merge_asof(
+        prices[["date", "close"]].sort_values("date"),
+        factors.sort_values("date"),
+        on="date",
+        direction="backward",
+    )
+    if merged[["f", "s", "u"]].isna().any().any():
+        raise ValueError("Sina factors do not cover the full price history")
+    multipliers = np.ones(len(merged), dtype=float)
+    current_multiplier = 1.0
+    for index in range(1, len(merged)):
+        previous = merged.iloc[index - 1]
+        current = merged.iloc[index]
+        previous_params = previous[["f", "s", "u"]].to_numpy(dtype=float)
+        current_params = current[["f", "s", "u"]].to_numpy(dtype=float)
+        if not np.allclose(previous_params, current_params, rtol=0.0, atol=1e-12):
+            # Sina hfq maps a raw price P to P*f*s+u. Solve the old mapping in
+            # the new unit system, then chain the event as a multiplicative
+            # total-return factor. Hfq events become effective on the actual
+            # ex-right date, including funds whose qfq metadata changes early.
+            previous_scale = float(previous["f"] * previous["s"])
+            current_scale = float(current["f"] * current["s"])
+            equivalent_price = (
+                float(previous["close"]) * previous_scale
+                + float(previous["u"])
+                - float(current["u"])
+            ) / current_scale
+            if not np.isfinite(equivalent_price) or equivalent_price <= 0:
+                raise ValueError(f"invalid Sina corporate-action event at {current['date'].date()}")
+            current_multiplier *= float(previous["close"]) / equivalent_price
+        multipliers[index] = current_multiplier
+    if not np.isfinite(multipliers).all() or (multipliers <= 0).any():
+        raise ValueError("invalid Sina total-return multiplier")
+    return pd.Series(multipliers, index=merged.index)
+
+
+def fetch_history_sina_pair(
+    session: requests.Session,
+    symbol: str,
+    start_date: date,
+    end_date: date,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    sina_symbol = symbol.lower()
+    response = session.get(
+        SINA_HISTORY_URL.format(sina_symbol),
+        headers={"Referer": f"https://finance.sina.com.cn/realstock/company/{sina_symbol}/nc.shtml"},
+        timeout=35,
+    )
+    response.raise_for_status()
+    assignment = response.text.split("=", 1)[1].split(";", 1)[0].strip()
+    encoded = json.loads(assignment)
+    frame = pd.DataFrame(_decode_sina_klc(encoded))
+    required = ["date", "open", "close", "high", "low", "volume", "amount"]
+    if frame.empty or not set(required).issubset(frame.columns):
+        raise ValueError(f"Sina history lacks columns: {required}")
+    frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.tz_localize(None)
+    frame[required[1:]] = frame[required[1:]].apply(pd.to_numeric, errors="coerce")
+    frame = frame.dropna(subset=required).drop_duplicates("date", keep="last").sort_values("date")
+
+    factors = fetch_sina_factors(session, symbol)
+    multiplier = _sina_total_return_multiplier(frame, factors).to_numpy()
+
+    adjusted = frame[["date", "open", "close", "high", "low"]].copy()
+    for column in ("open", "close", "high", "low"):
+        adjusted[column] *= multiplier
+    adjusted["symbol"] = symbol
+    adjusted = adjusted[["date", "symbol", "open", "close", "high", "low"]].rename(
+        columns={column: f"adj_{column}" for column in ("open", "close", "high", "low")}
+    )
+
+    raw = frame.copy()
+    raw["symbol"] = symbol
+    raw["amplitude"] = (raw["high"] - raw["low"]) / raw["close"].shift(1) * 100.0
+    raw["pct_change"] = raw["close"].pct_change(fill_method=None) * 100.0
+    raw["price_change"] = raw["close"].diff()
+    raw["turnover_rate"] = np.nan
+    raw["data_source"] = "sina"
+    raw["amount_quality"] = "reported"
+    raw = raw[
+        [
+            "date",
+            "symbol",
+            "open",
+            "close",
+            "high",
+            "low",
+            "volume",
+            "amount",
+            "amplitude",
+            "pct_change",
+            "price_change",
+            "turnover_rate",
+            "data_source",
+            "amount_quality",
+        ]
+    ].rename(columns={column: f"raw_{column}" for column in ("open", "close", "high", "low")})
+    requested = raw["date"].dt.date.between(start_date, end_date)
+    return raw.loc[requested].reset_index(drop=True), adjusted.loc[requested].reset_index(drop=True)
 
 
 def fetch_history_tencent(
@@ -337,13 +500,13 @@ def fetch_history_tencent(
     end_date: date,
     adjusted: bool,
 ) -> pd.DataFrame:
-    """Fetch Tencent history backwards because qfq responses are capped at 640 rows."""
+    """Fetch Tencent history backwards because adjusted responses are capped at 640 rows."""
     exchange_code = symbol.lower()
     page_size = 640 if adjusted else 2000
     cursor = end_date
     pages: list[pd.DataFrame] = []
     while cursor >= start_date:
-        adjust_name = "qfq" if adjusted else ""
+        adjust_name = "hfq" if adjusted else ""
         params = {
             "param": (
                 f"{exchange_code},day,{start_date.isoformat()},"
@@ -375,10 +538,10 @@ def fetch_history_tencent(
             )
         symbol_data = (payload.get("data") or {}).get(exchange_code) or {}
         if adjusted:
-            # Tencent returns ``day`` for a qfq request when the instrument has
+            # Tencent returns ``day`` for an adjusted request when the instrument has
             # no recorded adjustment event; instruments with events use
-            # ``qfqday``. In both cases the response is for the qfq request.
-            rows = symbol_data.get("qfqday") or symbol_data.get("day") or []
+            # ``hfqday``. In both cases the response is for the hfq request.
+            rows = symbol_data.get("hfqday") or symbol_data.get("day") or []
         else:
             rows = symbol_data.get("day") or []
         if not rows:
@@ -401,7 +564,7 @@ def fetch_history_tencent(
     frame["symbol"] = symbol
     if adjusted:
         return frame[["date", "symbol", "open", "close", "high", "low"]].rename(
-            columns={column: f"qfq_{column}" for column in ("open", "close", "high", "low")}
+            columns={column: f"adj_{column}" for column in ("open", "close", "high", "low")}
         )
     frame["volume"] = frame["volume_lots"] * 100.0
     typical_price = (frame["open"] + frame["close"] + frame["high"] + frame["low"]) / 4.0
@@ -440,21 +603,43 @@ def fetch_history(
     adjusted: bool,
     history_source: str,
 ) -> pd.DataFrame:
+    if history_source == "sina":
+        raw, adjusted_frame = fetch_history_sina_pair(session, symbol, start_date, end_date)
+        return adjusted_frame if adjusted else raw
     if history_source == "tencent":
         return fetch_history_tencent(session, symbol, start_date, end_date, adjusted)
     if history_source == "eastmoney":
         return fetch_history_eastmoney(session, symbol, start_date, end_date, adjusted)
+    raw, adjusted_frame = fetch_history_sina_pair(session, symbol, start_date, end_date)
+    return adjusted_frame if adjusted else raw
+
+
+def fetch_history_pair(
+    session: requests.Session,
+    symbol: str,
+    start_date: date,
+    end_date: date,
+    history_source: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if history_source == "sina":
+        return fetch_history_sina_pair(session, symbol, start_date, end_date)
+    if history_source in {"eastmoney", "tencent"}:
+        raw = fetch_history(session, symbol, start_date, end_date, False, history_source)
+        adjusted = fetch_history(session, symbol, start_date, end_date, True, history_source)
+        return raw, adjusted
     try:
-        return fetch_history_eastmoney(session, symbol, start_date, end_date, adjusted)
+        return fetch_history_sina_pair(session, symbol, start_date, end_date)
     except Exception as exc:
-        LOGGER.warning("%s Eastmoney history failed (%s); using Tencent", symbol, exc)
-        return fetch_history_tencent(session, symbol, start_date, end_date, adjusted)
+        LOGGER.warning("%s Sina history failed (%s); using Eastmoney", symbol, exc)
+        raw = fetch_history_eastmoney(session, symbol, start_date, end_date, False)
+        adjusted = fetch_history_eastmoney(session, symbol, start_date, end_date, True)
+        return raw, adjusted
 
 
-def combine_histories(raw: pd.DataFrame, qfq: pd.DataFrame, end_date: date) -> pd.DataFrame:
-    if raw.empty or qfq.empty:
-        raise ValueError("raw or qfq history is empty")
-    frame = raw.merge(qfq, on=["date", "symbol"], how="inner", validate="one_to_one")
+def combine_histories(raw: pd.DataFrame, adjusted: pd.DataFrame, end_date: date) -> pd.DataFrame:
+    if raw.empty or adjusted.empty:
+        raise ValueError("raw or adjusted history is empty")
+    frame = raw.merge(adjusted, on=["date", "symbol"], how="inner", validate="one_to_one")
     frame = frame[frame["date"].dt.date <= end_date]
     frame = frame.drop_duplicates("date", keep="last").sort_values("date")
     for column in RAW_COLUMNS:
@@ -471,10 +656,10 @@ def _atomic_csv(frame: pd.DataFrame, path: Path) -> None:
 
 
 def _overlap_changed(old: pd.DataFrame, new: pd.DataFrame, tolerance: float = 5e-4) -> bool:
-    overlap = old[["date", "qfq_close"]].merge(new[["date", "qfq_close"]], on="date", suffixes=("_old", "_new"))
+    overlap = old[["date", "adj_close"]].merge(new[["date", "adj_close"]], on="date", suffixes=("_old", "_new"))
     if overlap.empty:
         return False
-    relative = (overlap["qfq_close_new"] / overlap["qfq_close_old"] - 1).abs()
+    relative = (overlap["adj_close_new"] / overlap["adj_close_old"] - 1).abs()
     return bool((relative > tolerance).any())
 
 
@@ -495,16 +680,22 @@ def download_one(
         if path.exists() and not full_refresh:
             old = pd.read_csv(path, parse_dates=["date"])
             if not old.empty:
-                fetch_start = max(start_date, old["date"].max().date() - timedelta(days=30))
-        raw = fetch_history(session, symbol, fetch_start, end_date, adjusted=False, history_source=history_source)
-        qfq = fetch_history(session, symbol, fetch_start, end_date, adjusted=True, history_source=history_source)
-        fresh = combine_histories(raw, qfq, end_date)
+                incompatible = "adj_close" not in old.columns
+                if history_source in {"auto", "sina"}:
+                    incompatible |= not old.get("amount_quality", pd.Series(dtype=str)).eq("reported").all()
+                if incompatible:
+                    old = pd.DataFrame()
+                    fetch_start = start_date
+                    refreshed = True
+                else:
+                    fetch_start = max(start_date, old["date"].max().date() - timedelta(days=30))
+        raw, adjusted = fetch_history_pair(session, symbol, fetch_start, end_date, history_source)
+        fresh = combine_histories(raw, adjusted, end_date)
         refreshed = full_refresh or old.empty
         if not old.empty and _overlap_changed(old, fresh):
             LOGGER.info("%s adjustment changed; refreshing full history", symbol)
-            raw = fetch_history(session, symbol, start_date, end_date, adjusted=False, history_source=history_source)
-            qfq = fetch_history(session, symbol, start_date, end_date, adjusted=True, history_source=history_source)
-            fresh = combine_histories(raw, qfq, end_date)
+            raw, adjusted = fetch_history_pair(session, symbol, start_date, end_date, history_source)
+            fresh = combine_histories(raw, adjusted, end_date)
             old = pd.DataFrame()
             refreshed = True
         combined = fresh if old.empty else pd.concat([old, fresh], ignore_index=True)
@@ -587,6 +778,50 @@ def download_dataset(
     return universe, results
 
 
+def readjust_sina_dataset(data_dir: Path, workers: int = 4, insecure: bool = False) -> pd.DataFrame:
+    """Rebuild adjusted OHLC from saved Sina raw prices without redownloading K-lines."""
+    raw_dir = data_dir / "raw"
+    files = sorted(raw_dir.glob("*.csv"))
+    if not files:
+        raise FileNotFoundError(f"no raw CSV files under {raw_dir}")
+
+    def readjust_one(path: Path) -> dict:
+        session = make_session(insecure)
+        try:
+            frame = pd.read_csv(path, parse_dates=["date"])
+            required = {"date", "symbol", "raw_open", "raw_close", "raw_high", "raw_low", "data_source"}
+            missing = sorted(required - set(frame.columns))
+            if missing:
+                raise ValueError(f"missing columns: {missing}")
+            if not frame["data_source"].eq("sina").all():
+                raise ValueError("readjust only accepts Sina raw histories")
+            symbol = str(frame["symbol"].iloc[0]).upper()
+            factors = fetch_sina_factors(session, symbol)
+            prices = frame[["date", "raw_close"]].rename(columns={"raw_close": "close"})
+            multiplier = _sina_total_return_multiplier(prices, factors).to_numpy()
+            for field in ("open", "close", "high", "low"):
+                frame[f"adj_{field}"] = pd.to_numeric(frame[f"raw_{field}"], errors="raise") * multiplier
+            _atomic_csv(frame[RAW_COLUMNS], path)
+            return {"symbol": symbol, "rows": len(frame), "error": None}
+        except Exception as exc:
+            return {"symbol": path.stem.upper(), "rows": 0, "error": f"{type(exc).__name__}: {exc}"}
+        finally:
+            session.close()
+
+    rows = []
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
+        futures = [executor.submit(readjust_one, path) for path in files]
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Rebuilding Sina adjustment factors"):
+            rows.append(future.result())
+    report = pd.DataFrame(rows).sort_values("symbol")
+    _atomic_csv(report, data_dir / "readjust_report.csv")
+    failures = report[report["error"].notna()]
+    if not failures.empty:
+        raise RuntimeError(f"readjustment failed for {len(failures)} ETF(s); see {data_dir / 'readjust_report.csv'}")
+    LOGGER.info("readjusted %d Sina ETF histories", len(report))
+    return report
+
+
 def _valid_ohlc(frame: pd.DataFrame, prefix: str) -> pd.Series:
     open_ = frame[f"{prefix}_open"]
     close = frame[f"{prefix}_close"]
@@ -609,23 +844,26 @@ def normalize_frame(raw: pd.DataFrame) -> pd.DataFrame:
     numeric = [column for column in RAW_COLUMNS if column not in {"date", "symbol", "data_source", "amount_quality"}]
     frame[numeric] = frame[numeric].apply(pd.to_numeric, errors="coerce")
     frame = frame.dropna(subset=["date", "symbol"]).drop_duplicates("date", keep="last").sort_values("date")
-    valid = _valid_ohlc(frame, "raw") & _valid_ohlc(frame, "qfq")
-    valid &= frame["volume"].gt(0) & frame["amount"].ge(0)
-    frame = frame[valid].copy()
+    valid_ohlc = _valid_ohlc(frame, "raw") & _valid_ohlc(frame, "adj")
+    if not valid_ohlc.all():
+        bad_dates = frame.loc[~valid_ohlc, "date"].dt.strftime("%Y-%m-%d").head(5).tolist()
+        raise ValueError(f"invalid raw/adjusted OHLC rows: {bad_dates}")
+    active = frame["volume"].gt(0) & frame["amount"].ge(0)
+    frame = frame[active].copy()
     if frame.empty:
         raise ValueError("no valid OHLCV rows after cleaning")
-    first_qfq_close = float(frame["qfq_close"].iloc[0])
-    if not np.isfinite(first_qfq_close) or first_qfq_close <= 0:
-        raise ValueError("invalid first qfq close")
-    factor = (frame["qfq_close"] / frame["raw_close"]) / first_qfq_close
+    first_adjusted_close = float(frame["adj_close"].iloc[0])
+    if not np.isfinite(first_adjusted_close) or first_adjusted_close <= 0:
+        raise ValueError("invalid first adjusted close")
+    factor = (frame["adj_close"] / frame["raw_close"]) / first_adjusted_close
     if factor.isna().any() or (factor <= 0).any():
         raise ValueError("invalid adjustment factor")
     output = pd.DataFrame({"date": frame["date"], "symbol": frame["symbol"].str.upper()})
     for column in ("open", "close", "high", "low"):
-        output[column] = frame[f"qfq_{column}"] / first_qfq_close
+        output[column] = frame[f"adj_{column}"] / first_adjusted_close
     output["factor"] = factor
     output["volume"] = frame["volume"] / factor
-    output["change"] = frame["qfq_close"].pct_change(fill_method=None)
+    output["change"] = frame["adj_close"].pct_change(fill_method=None)
     output["amount"] = frame["amount"]
     output["vwap"] = (frame["amount"] / frame["volume"]) * factor
     output["turnover_rate"] = frame["turnover_rate"]
@@ -678,12 +916,51 @@ def normalize_dataset(data_dir: Path, workers: int = 4) -> pd.DataFrame:
 
 def validate_dataset(data_dir: Path, expected_end: date | None = None, max_stale_days: int = 7) -> dict:
     universe_path = data_dir / "universe.csv"
+    raw_dir = data_dir / "raw"
     normalized_dir = data_dir / "normalized"
     if not universe_path.exists():
         raise FileNotFoundError(universe_path)
     universe = pd.read_csv(universe_path, dtype={"code": str})
+    raw_files = sorted(raw_dir.glob("*.csv"))
     files = sorted(normalized_dir.glob("*.csv"))
     issues: list[dict] = []
+    raw_total_rows = 0
+    reported_amount_rows = 0
+    source_counts: dict[str, int] = {}
+    for path in tqdm(raw_files, desc="Validating raw data"):
+        try:
+            raw = pd.read_csv(path, parse_dates=["date"])
+            raw_total_rows += len(raw)
+            missing = sorted(set(RAW_COLUMNS) - set(raw.columns))
+            if missing:
+                raise ValueError(f"missing columns: {missing}")
+            if raw.empty:
+                raise ValueError("empty file")
+            if raw["date"].duplicated().any() or not raw["date"].is_monotonic_increasing:
+                raise ValueError("dates are duplicated or unsorted")
+            numeric_columns = [
+                column for column in RAW_COLUMNS if column not in {"date", "symbol", "data_source", "amount_quality"}
+            ]
+            raw[numeric_columns] = raw[numeric_columns].apply(pd.to_numeric, errors="coerce")
+            valid_ohlc = _valid_ohlc(raw, "raw") & _valid_ohlc(raw, "adj")
+            if not valid_ohlc.all():
+                bad_dates = raw.loc[~valid_ohlc, "date"].dt.strftime("%Y-%m-%d").head(5).tolist()
+                raise ValueError(f"{int((~valid_ohlc).sum())} invalid OHLC rows, examples={bad_dates}")
+            if (raw["volume"] < 0).any() or (raw["amount"] < 0).any():
+                raise ValueError("contains negative volume/amount")
+            returns = raw["adj_close"].pct_change(fill_method=None)
+            jump_count = int((returns.abs() > 0.25).sum())
+            if jump_count:
+                jump_dates = raw.loc[returns.abs() > 0.25, "date"].dt.strftime("%Y-%m-%d").head(5).tolist()
+                raise ValueError(f"{jump_count} adjusted return jumps above 25%, examples={jump_dates}")
+            amount_reported = raw["amount_quality"].eq("reported")
+            reported_amount_rows += int(amount_reported.sum())
+            if not amount_reported.all():
+                raise ValueError(f"{int((~amount_reported).sum())} rows use estimated amount")
+            for source, count in raw["data_source"].fillna("missing").value_counts().items():
+                source_counts[str(source)] = source_counts.get(str(source), 0) + int(count)
+        except Exception as exc:
+            issues.append({"phase": "raw", "file": path.name, "error": f"{type(exc).__name__}: {exc}"})
     total_rows = 0
     end_dates = []
     for path in tqdm(files, desc="Validating normalized data"):
@@ -705,15 +982,39 @@ def validate_dataset(data_dir: Path, expected_end: date | None = None, max_stale
                 raise ValueError("contains infinity")
             if (frame[["open", "close", "high", "low", "volume", "factor"]].dropna() <= 0).any().any():
                 raise ValueError("contains non-positive OHLCV/factor")
+            high = frame["high"]
+            low = frame["low"]
+            if (high + 1e-8 < frame[["open", "close", "low"]].max(axis=1)).any() or (
+                low - 1e-8 > frame[["open", "close", "high"]].min(axis=1)
+            ).any():
+                raise ValueError("contains invalid normalized OHLC ordering")
+            if (frame["change"].abs() > 0.25).any():
+                raise ValueError("contains adjusted return jumps above 25%")
+            if frame["amount_estimated"].fillna(1).ne(0).any():
+                raise ValueError("contains estimated amount")
             end_date = frame["date"].max().date()
             end_dates.append(end_date)
             if expected_end and (expected_end - end_date).days > max_stale_days:
                 raise ValueError(f"stale last date: {end_date}")
         except Exception as exc:
-            issues.append({"file": path.name, "error": f"{type(exc).__name__}: {exc}"})
+            issues.append({"phase": "normalized", "file": path.name, "error": f"{type(exc).__name__}: {exc}"})
+    if len(raw_files) != len(universe):
+        issues.append(
+            {"phase": "coverage", "file": None, "error": f"raw file count {len(raw_files)} != universe {len(universe)}"}
+        )
+    if len(files) != len(universe):
+        issues.append(
+            {"phase": "coverage", "file": None, "error": f"normalized file count {len(files)} != universe {len(universe)}"}
+        )
+    training_ready = not issues
     report = {
         "generated_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+        "training_ready": training_ready,
         "universe_count": int(len(universe)),
+        "raw_file_count": len(raw_files),
+        "raw_total_rows": raw_total_rows,
+        "data_source_rows": source_counts,
+        "reported_amount_ratio": reported_amount_rows / raw_total_rows if raw_total_rows else 0.0,
         "normalized_file_count": len(files),
         "total_rows": total_rows,
         "min_latest_date": min(end_dates).isoformat() if end_dates else None,
@@ -725,7 +1026,7 @@ def validate_dataset(data_dir: Path, expected_end: date | None = None, max_stale
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     if issues:
         raise RuntimeError(f"validation found {len(issues)} issue(s); see {report_path}")
-    LOGGER.info("validation passed: %d ETFs, %d rows", len(files), total_rows)
+    LOGGER.info("validation passed and training-ready: %d ETFs, %d rows", len(files), total_rows)
     return report
 
 
@@ -782,12 +1083,17 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(download)
     download.add_argument("--start", type=parse_date, default=date(2005, 1, 1))
     download.add_argument("--end", type=parse_date, default=None)
-    download.add_argument("--workers", type=int, default=8)
+    download.add_argument("--workers", type=int, default=4)
     download.add_argument("--limit", type=int)
     download.add_argument("--symbols", nargs="+")
     download.add_argument("--full-refresh", action="store_true")
     download.add_argument("--insecure", action="store_true")
-    download.add_argument("--history-source", choices=("auto", "eastmoney", "tencent"), default="auto")
+    download.add_argument("--history-source", choices=("auto", "sina", "eastmoney", "tencent"), default="auto")
+
+    readjust = subparsers.add_parser("readjust", help="rebuild Sina adjustment factors from saved raw K-lines")
+    add_common(readjust)
+    readjust.add_argument("--workers", type=int, default=4)
+    readjust.add_argument("--insecure", action="store_true")
 
     normalize = subparsers.add_parser("normalize", help="clean raw histories and apply Qlib normalization")
     add_common(normalize)
@@ -809,12 +1115,12 @@ def build_parser() -> argparse.ArgumentParser:
     all_parser.add_argument("--qlib-dir", type=Path, default=DEFAULT_DATA_DIR / "qlib_data")
     all_parser.add_argument("--start", type=parse_date, default=date(2005, 1, 1))
     all_parser.add_argument("--end", type=parse_date, default=None)
-    all_parser.add_argument("--workers", type=int, default=8)
+    all_parser.add_argument("--workers", type=int, default=4)
     all_parser.add_argument("--limit", type=int)
     all_parser.add_argument("--symbols", nargs="+")
     all_parser.add_argument("--full-refresh", action="store_true")
     all_parser.add_argument("--insecure", action="store_true")
-    all_parser.add_argument("--history-source", choices=("auto", "eastmoney", "tencent"), default="auto")
+    all_parser.add_argument("--history-source", choices=("auto", "sina", "eastmoney", "tencent"), default="auto")
     all_parser.add_argument("--overwrite", action="store_true")
     return parser
 
@@ -837,6 +1143,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         failures = [result for result in results if result.error]
         return 1 if failures else 0
+    if args.command == "readjust":
+        readjust_sina_dataset(args.data_dir, args.workers, args.insecure)
+        return 0
     if args.command == "normalize":
         normalize_dataset(args.data_dir, args.workers)
         return 0
