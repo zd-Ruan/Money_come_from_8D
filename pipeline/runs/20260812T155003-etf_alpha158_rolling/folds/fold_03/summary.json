@@ -1,0 +1,38 @@
+{
+  "fold": 3,
+  "train_start": "2015-01-05",
+  "train_end": "2024-12-25",
+  "valid_start": "2024-12-30",
+  "valid_end": "2025-07-09",
+  "test_start": "2025-07-14",
+  "test_end": "2025-10-16",
+  "purge_bars": 2,
+  "rows": {
+    "train": 335996,
+    "valid": 49742,
+    "test_features": 31363,
+    "test_labels": 31357
+  },
+  "instruments": {
+    "train": 765,
+    "valid": 580,
+    "test": 626
+  },
+  "best_iterations": [
+    86,
+    63,
+    111
+  ],
+  "ic": -0.0403086389166026,
+  "rank_ic": -0.023545366997759023,
+  "prediction_seed_std_mean": 0.011772500563638365,
+  "effective_test_end": "2025-10-16",
+  "portfolio": {
+    "days": 63,
+    "net_cumulative_return": 0.1975446818189206,
+    "benchmark_cumulative_return": 0.15739166736602783,
+    "excess_cumulative_return": 0.040153014452892766,
+    "start": "2025-07-14",
+    "end": "2025-10-16"
+  }
+}

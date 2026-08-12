@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-08-12T12:04:17.937177+08:00",
+  "training_ready": false,
+  "universe_count": 1137,
+  "raw_file_count": 1441,
+  "raw_total_rows": 1228579,
+  "data_source_rows": {
+    "sina": 1228579
+  },
+  "reported_amount_ratio": 1.0,
+  "normalized_file_count": 1441,
+  "total_rows": 1227372,
+  "min_latest_date": "2026-08-10",
+  "max_latest_date": "2026-08-10",
+  "issue_count": 2,
+  "issues": [
+    {
+      "phase": "coverage",
+      "file": null,
+      "error": "raw file count 1441 != universe 1137"
+    },
+    {
+      "phase": "coverage",
+      "file": null,
+      "error": "normalized file count 1441 != universe 1137"
+    }
+  ]
+}

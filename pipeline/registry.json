@@ -1,0 +1,46 @@
+{
+  "updated_at": "2026-08-12T17:01:24.979238+08:00",
+  "runs": [
+    {
+      "run_id": "20260812T165254-etf_alpha158_rolling",
+      "created_at": "2026-08-12T16:52:54.948354+08:00",
+      "completed_at": "2026-08-12T17:01:24.970237+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "C:\\Users\\zhendong ruan\\Downloads\\Code\\My_Quant\\pipeline\\runs\\20260812T165254-etf_alpha158_rolling",
+      "snapshot_id": "20260810-5a6c383a773f",
+      "metrics": {
+        "net_cumulative_return": 0.48562366429052606,
+        "benchmark_cumulative_return": 0.24135661125183105,
+        "ic": 0.005909434604983524,
+        "rank_ic": 0.01404900437740975,
+        "max_drawdown": -0.1568883527427325
+      }
+    },
+    {
+      "run_id": "20260812T155003-etf_alpha158_rolling",
+      "created_at": "2026-08-12T15:50:03.366262+08:00",
+      "completed_at": "2026-08-12T15:58:59.629495+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "C:\\Users\\zhendong ruan\\Downloads\\Code\\My_Quant\\pipeline\\runs\\20260812T155003-etf_alpha158_rolling",
+      "snapshot_id": "20260810-331c80ffb271",
+      "metrics": {
+        "net_cumulative_return": 0.5026016238835649,
+        "benchmark_cumulative_return": 0.24135661125183105,
+        "ic": 0.005909434604983524,
+        "rank_ic": 0.01404900437740975,
+        "max_drawdown": -0.15480504781313198
+      }
+    },
+    {
+      "run_id": "20260812T151546-etf_alpha158_rolling",
+      "created_at": "2026-08-12T15:15:46.332995+08:00",
+      "completed_at": "2026-08-12T15:21:07.950623+08:00",
+      "status": "failed",
+      "classification": "invalid",
+      "run_dir": "C:\\Users\\zhendong ruan\\Downloads\\Code\\My_Quant\\pipeline\\runs\\20260812T151546-etf_alpha158_rolling",
+      "error": "IndexError: index 5217 is out of bounds for axis 0 with size 5217"
+    }
+  ]
+}

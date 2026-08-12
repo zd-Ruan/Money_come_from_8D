@@ -1,0 +1,29 @@
+{
+  "fold": 7,
+  "train_start": "2015-01-05",
+  "train_end": "2026-01-09",
+  "valid_start": "2026-01-14",
+  "valid_end": "2026-07-23",
+  "test_start": "2026-07-28",
+  "test_end": "2026-08-10",
+  "purge_bars": 2,
+  "rows": {
+    "train": 448757,
+    "valid": 76443,
+    "test_features": 6839,
+    "test_labels": 5475
+  },
+  "instruments": {
+    "train": 958,
+    "valid": 850,
+    "test": 714
+  },
+  "best_iterations": [
+    10,
+    1,
+    16
+  ],
+  "ic": 0.07590313638322702,
+  "rank_ic": 0.060058379875634005,
+  "prediction_seed_std_mean": 0.00930733493544402
+}

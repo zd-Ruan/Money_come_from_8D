@@ -1,0 +1,19 @@
+{
+  "slippage_bps_per_side": 30,
+  "days": 388,
+  "net_cumulative_return": 0.02942808434875377,
+  "net_annualized_return": 0.01901579373896145,
+  "benchmark_cumulative_return": 0.24135661125183105,
+  "excess_annualized_return": -0.10967632059293979,
+  "information_ratio": -0.7738376086718329,
+  "excess_hac_t_stat": -1.0010689413359466,
+  "strategy_max_drawdown": -0.24432809308151915,
+  "excess_max_drawdown": -0.2825584575051209,
+  "beta": 1.0739883082640058,
+  "beta_adjusted_alpha_annualized": -0.12111258174079577,
+  "strategy_benchmark_correlation": 0.7870593422519284,
+  "average_daily_turnover": 0.36459897920754686,
+  "total_cost": 4971633.249692072,
+  "fill_rate": 0.9861375289338287,
+  "terminal_account": 10294280.84348757
+}

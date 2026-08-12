@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-08-12T16:37:12.065969+08:00",
+  "snapshot_id": "20260810-5a6c383a773f",
+  "source_fingerprint": "5a6c383a773f1440c8c93d0a722be9e8f96a067ea832b81ec616fb0cdc5fbdc6",
+  "data_valid": true,
+  "promotion_eligible": false,
+  "universe_mode": "current_snapshot",
+  "counts": {
+    "universe": 1137,
+    "instruments": 1137,
+    "feature_directories": 1137,
+    "feature_files": 13644,
+    "raw_files_total": 1441,
+    "normalized_files_total": 1441,
+    "pool_external_raw_symbols": 304,
+    "pool_external_normalized_symbols": 304
+  },
+  "calendar": {
+    "start": "2005-02-23",
+    "end": "2026-08-10",
+    "sessions": 5217,
+    "future_boundary": "2026-08-11"
+  },
+  "coverage": {
+    "missing_in_instruments": [],
+    "extra_in_instruments": [],
+    "missing_feature_dirs": [],
+    "missing_raw": [],
+    "missing_normalized": []
+  },
+  "upstream_validation": {
+    "generated_at": "2026-08-12T12:04:17.937177+08:00",
+    "training_ready": false,
+    "issue_count": 2,
+    "reported_amount_ratio": 1.0,
+    "whitelist_scoped_ready": true
+  },
+  "blocking_issues": [],
+  "warnings": [
+    "upstream total-file count warnings are fully explained by retained pool-external cache files; the active whitelist is complete",
+    "current ETF snapshot is backfilled through history; survivor bias remains"
+  ]
+}
