@@ -1,0 +1,9 @@
+artifact_location: file:C:\Users\zhendong ruan\Downloads\Code\My_Quant\qlib\mlruns/688224112332779386
+creation_time: 1786500485436
+effective_trace_archival_retention: null
+experiment_id: '688224112332779386'
+last_update_time: 1786500485436
+lifecycle_stage: active
+name: cn_etf_alpha158_lightgbm_t1
+trace_location: null
+workspace: default

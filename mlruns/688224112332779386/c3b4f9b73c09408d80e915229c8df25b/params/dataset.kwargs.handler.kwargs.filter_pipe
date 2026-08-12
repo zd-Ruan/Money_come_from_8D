@@ -1,0 +1,1 @@
+[{'filter_type': 'ExpressionDFilter', 'rule_expression': 'Mean($close * $volume, 20) > 10000000', 'filter_start_time': None, 'filter_end_time': None, 'keep': False}]

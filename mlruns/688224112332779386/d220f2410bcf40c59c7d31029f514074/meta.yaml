@@ -1,0 +1,14 @@
+artifact_uri: file:C:\Users\zhendong ruan\Downloads\Code\My_Quant\qlib\mlruns/688224112332779386/d220f2410bcf40c59c7d31029f514074/artifacts
+end_time: 1786507953016
+entry_point_name: ''
+experiment_id: '688224112332779386'
+lifecycle_stage: active
+run_id: d220f2410bcf40c59c7d31029f514074
+run_name: mlflow_recorder
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1786507603721
+status: 3
+tags: []
+user_id: ZhenDong Ruan

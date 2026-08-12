@@ -1,13 +1,16 @@
+experiment_name: cn_etf_alpha158_lightgbm_t1
+
 qlib_init:
-    provider_uri: "data/cn_etf/qlib_data"
+    provider_uri: '{{ QLIB_PROVIDER_URI | default("data/cn_etf/qlib_data", true) }}'
     region: cn
+    kernels: 4
 
 market: &market t1_etf
 benchmark: &benchmark SH510300
 
 data_handler_config: &data_handler_config
     start_time: 2015-01-01
-    end_time: 2026-08-10
+    end_time: '{{ DATA_END_DATE | default("2026-08-10", true) }}'
     fit_start_time: 2015-01-01
     fit_end_time: 2023-12-31
     instruments: *market
@@ -34,7 +37,7 @@ port_analysis_config: &port_analysis_config
             only_tradable: true
     backtest:
         start_time: 2025-01-01
-        end_time: 2026-08-10
+        end_time: '{{ BACKTEST_END_DATE | default("2026-08-07", true) }}'
         account: 10000000
         benchmark: *benchmark
         exchange_kwargs:
@@ -69,7 +72,7 @@ task:
             segments:
                 train: [2015-01-01, 2023-12-31]
                 valid: [2024-01-01, 2024-12-31]
-                test: [2025-01-01, 2026-08-10]
+                test: [2025-01-01, '{{ DATA_END_DATE | default("2026-08-10", true) }}']
     record:
         - class: SignalRecord
           module_path: qlib.workflow.record_temp
