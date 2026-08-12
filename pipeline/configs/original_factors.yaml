@@ -1,11 +1,11 @@
 project:
-  name: etf_alpha158_small_account
-  description: Frozen Alpha158 walk-forward baseline for a CNY 20,000 research account
+  name: etf_alpha158_original_factors_small_account
+  description: Frozen Alpha158 plus original OHLCV candidates for a CNY 20,000 research account
   random_seeds: [20260812, 20260813, 20260814]
 
 features:
-  mode: alpha158
-  families: []
+  mode: alpha158_plus_original
+  families: [trend_crowding, volume_impact, compression_release, price_volume_divergence, session_structure]
 
 paths:
   qlib_provider: data/cn_etf/qlib_data
@@ -88,4 +88,4 @@ gates:
   require_historical_point_in_time_universe_for_promotion: true
 
 report:
-  title: ETF Alpha158 小账户滚动研究基线
+  title: ETF Alpha158 + 原创因子小账户滚动研究

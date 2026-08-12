@@ -42,6 +42,7 @@ class WebApiTests(unittest.TestCase):
                         "ic": 0.01,
                         "rank_ic": 0.02,
                         "max_drawdown": -0.1,
+                        "relative_wealth_max_drawdown": -0.08,
                         "secret": "metric-secret",
                     },
                 },
@@ -78,6 +79,23 @@ class WebApiTests(unittest.TestCase):
                     "lightgbm": "4.7.0",
                     "secret": "environment-secret",
                 },
+                "factor_catalog": {
+                    "catalog_version": "orc_ohlcv_v1",
+                    "families": ["trend_crowding"],
+                    "factors": [
+                        {
+                            "name": "ORC_TREND_PATH_CROWD_20",
+                            "family": "trend_crowding",
+                            "expression": "private expression",
+                            "direction": -1,
+                            "lookback": 20,
+                            "hypothesis": "趋势过度拥挤后更可能回撤。",
+                            "secret": "factor-secret",
+                        }
+                    ],
+                    "sha256": "a" * 64,
+                    "secret": "catalog-secret",
+                },
             },
         )
         self._write_json(
@@ -85,6 +103,9 @@ class WebApiTests(unittest.TestCase):
             {
                 "base_slippage_bps_per_side": 5,
                 "ic": 0.01,
+                "ic_hac_t_stat": 2.2,
+                "rank_ic": 0.02,
+                "rank_ic_hac_t_stat": 2.4,
                 "secret": "metrics-secret",
                 "base": {"days": 300, "net_cumulative_return": 0.5, "secret": "base-secret"},
                 "stress": {"10": {"days": 300, "net_cumulative_return": 0.4, "secret": "stress-secret"}},
@@ -110,7 +131,113 @@ class WebApiTests(unittest.TestCase):
                 "checks": [{"name": "data_valid", "passed": True, "value": True, "secret": "check-secret"}],
             },
         )
-        (self.completed_dir / "report.html").write_text("<html>report</html>", encoding="utf-8")
+        (self.completed_dir / "report.html").write_text(
+            f"<html>report at {self.completed_dir.resolve()}</html>", encoding="utf-8"
+        )
+        self.comparison_id = "baseline-run__vs__completed-run"
+        self._write_json(
+            self.pipeline_root / "comparisons" / f"{self.comparison_id}.json",
+            {
+                "schema_version": 1,
+                "comparison_status": "completed",
+                "status": "not_improved",
+                "baseline_run_id": "baseline-run",
+                "candidate_run_id": "completed-run",
+                "comparable": True,
+                "reasons": ["improvement criterion not met: daily_return_hac_significant"],
+                "conditions": {
+                    "source_fingerprint": "b" * 64,
+                    "snapshot_id": "snapshot-1",
+                    "base_slippage_bps_per_side": 5,
+                    "evaluation_start_date": "2026-01-05",
+                    "evaluation_end_date": "2026-03-03",
+                    "return_observations": 42,
+                    "signal_start_date": "2026-01-05",
+                    "signal_end_date": "2026-02-27",
+                    "signal_observations": 40,
+                    "secret": "condition-secret",
+                },
+                "thresholds": {
+                    "hac_t_stat": 1.96,
+                    "hac_max_lag": 5,
+                    "fold_win_rate": 0.5,
+                    "secret": "threshold-secret",
+                },
+                "deltas": {
+                    "terminal_relative_wealth": {
+                        "baseline": 1.01,
+                        "candidate": 1.03,
+                        "difference": 0.02,
+                        "secret": "terminal-secret",
+                    },
+                    "daily_strategy_return": {
+                        "observations": 42,
+                        "baseline_mean": 0.0005,
+                        "candidate_mean": 0.0009,
+                        "mean_difference": 0.0004,
+                        "hac_t_stat": 1.5,
+                        "secret": "daily-secret",
+                    },
+                    "ic": {
+                        "observations": 40,
+                        "baseline_mean": 0.01,
+                        "candidate_mean": 0.012,
+                        "mean_difference": 0.002,
+                        "hac_t_stat": 2.1,
+                    },
+                    "rank_ic": {
+                        "observations": 40,
+                        "baseline_mean": 0.02,
+                        "candidate_mean": 0.023,
+                        "mean_difference": 0.003,
+                        "hac_t_stat": 2.3,
+                    },
+                    "folds": {
+                        "folds": 2,
+                        "wins": 1,
+                        "losses": 1,
+                        "ties": 0,
+                        "win_rate": 0.5,
+                        "records": [
+                            {
+                                "fold": 1,
+                                "start": "2026-01-05",
+                                "end": "2026-02-02",
+                                "observations": 21,
+                                "baseline_terminal_wealth": 1.01,
+                                "candidate_terminal_wealth": 1.02,
+                                "benchmark_terminal_wealth": 1.0,
+                                "baseline_terminal_relative_wealth": 1.01,
+                                "candidate_terminal_relative_wealth": 1.02,
+                                "terminal_relative_wealth_difference": 0.01,
+                                "outcome": "win",
+                                "secret": "fold-secret",
+                            }
+                        ],
+                        "secret": "fold-summary-secret",
+                    },
+                    "secret": "delta-secret",
+                },
+                "decision": {
+                    "claim": "Improvement is not established.",
+                    "criteria": {
+                        "terminal_relative_wealth_positive": True,
+                        "daily_return_difference_positive": True,
+                        "daily_return_hac_significant": False,
+                        "fold_win_rate_majority": False,
+                        "ic_difference_non_negative": True,
+                        "rank_ic_difference_non_negative": True,
+                        "at_least_one_signal_hac_significant": True,
+                        "secret": True,
+                    },
+                    "secret": "decision-secret",
+                },
+                "scope": "paired incremental research evidence only",
+                "generated_at": "2026-08-12T17:00:00+08:00",
+                "private_path": str(self.pipeline_root.resolve()),
+                "secret": "comparison-secret",
+            },
+        )
         self.client = TestClient(create_app(self.pipeline_root))
 
     def tearDown(self):
@@ -139,6 +266,7 @@ class WebApiTests(unittest.TestCase):
                 "ic",
                 "rank_ic",
                 "max_drawdown",
+                "relative_wealth_max_drawdown",
             },
         )
         payload = response.text
@@ -161,9 +289,20 @@ class WebApiTests(unittest.TestCase):
                 "classification",
                 "snapshot_id",
                 "environment",
+                "factor_catalog",
             },
         )
         self.assertEqual(set(payload["manifest"]["environment"]), {"python", "platform", "qlib", "lightgbm"})
+        self.assertEqual(
+            set(payload["manifest"]["factor_catalog"]),
+            {"catalog_version", "families", "factors", "sha256"},
+        )
+        self.assertEqual(
+            set(payload["manifest"]["factor_catalog"]["factors"][0]),
+            {"name", "family", "direction", "hypothesis", "lookback"},
+        )
+        self.assertEqual(payload["metrics"]["ic_hac_t_stat"], 2.2)
+        self.assertEqual(payload["metrics"]["rank_ic_hac_t_stat"], 2.4)
         self.assertEqual(payload["metrics"]["base"], {"days": 300, "net_cumulative_return": 0.5})
         self.assertEqual(payload["metrics"]["stress"]["10"], {"days": 300, "net_cumulative_return": 0.4})
         self.assertEqual(payload["metrics"]["folds"][0]["rows"], {"train": 100})
@@ -187,16 +326,104 @@ class WebApiTests(unittest.TestCase):
         self.assertIn("<td>已完成</td>", page)
         self.assertIn("<td>失败</td>", page)
         self.assertIn("href='/runs/completed-run'", page)
+        self.assertIn(f"href='/comparisons/{self.comparison_id}'", page)
+        self.assertIn("比较审计 · 未证明改进", page)
         self.assertNotIn("href='/runs/failed-run'", page)
         self.assertNotIn(">research_only</span>", page)
         self.assertNotIn(">completed</td>", page)
 
+    def test_comparison_api_uses_nested_allowlist(self):
+        response = self.client.get(f"/api/comparisons/{self.comparison_id}")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["comparison_id"], self.comparison_id)
+        self.assertEqual(payload["status"], "not_improved")
+        self.assertEqual(payload["deltas"]["daily_strategy_return"]["hac_t_stat"], 1.5)
+        self.assertEqual(payload["deltas"]["ic"]["hac_t_stat"], 2.1)
+        self.assertEqual(payload["deltas"]["rank_ic"]["hac_t_stat"], 2.3)
+        self.assertEqual(payload["deltas"]["folds"]["records"][0]["outcome"], "win")
+        self.assertEqual(payload["factor_catalog"]["factors"][0]["lookback"], 20)
+        self.assertNotIn("expression", payload["factor_catalog"]["factors"][0])
+        serialized = response.text
+        self.assertNotIn("secret", serialized)
+        self.assertNotIn("private_path", serialized)
+        self.assertNotIn(str(self.pipeline_root.resolve()), serialized)
+
+        listing = self.client.get("/api/comparisons")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.json()["comparisons"][0], payload)
+        by_run = self.client.get("/api/runs/completed-run/comparison")
+        self.assertEqual(by_run.status_code, 200)
+        self.assertEqual(by_run.json(), payload)
+
+    def test_comparison_page_is_chinese_and_reads_frozen_artifacts(self):
+        response = self.client.get(f"/comparisons/{self.comparison_id}")
+        self.assertEqual(response.status_code, 200)
+        page = response.text
+        for expected in (
+            "未证明改进",
+            "可比较",
+            "关键增量与配对 HAC t",
+            "日策略收益",
+            "Rank IC",
+            "预声明判定条件",
+            "未通过",
+            "未满足改进条件：日策略收益差通过 HAC 显著性门槛",
+            "逐折相对财富",
+            "候选胜",
+            "冻结原创因子目录",
+            "ORC_TREND_PATH_CROWD_20",
+            "趋势过度拥挤后更可能回撤。",
+        ):
+            self.assertIn(expected, page)
+        self.assertNotIn("private expression", page)
+        self.assertNotIn("secret", page)
+        self.assertNotIn(str(self.pipeline_root.resolve()), page)
+
+        by_run = self.client.get("/runs/completed-run/comparison")
+        self.assertEqual(by_run.status_code, 200)
+        self.assertIn("未证明改进", by_run.text)
+
+    def test_dashboard_selects_latest_valid_comparison_and_ignores_corrupt_json(self):
+        original_path = self.pipeline_root / "comparisons" / f"{self.comparison_id}.json"
+        older = json.loads(original_path.read_text(encoding="utf-8"))
+        older.update({"status": "improved", "generated_at": "2026-08-12T16:59:00+08:00"})
+        self._write_json(self.pipeline_root / "comparisons" / "older.json", older)
+        (self.pipeline_root / "comparisons" / "corrupt.json").write_text("{", encoding="utf-8")
+
+        dashboard = self.client.get("/")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn(f"href='/comparisons/{self.comparison_id}'", dashboard.text)
+        self.assertNotIn("href='/comparisons/older'", dashboard.text)
+        listing = self.client.get("/api/comparisons")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(
+            [item["comparison_id"] for item in listing.json()["comparisons"]],
+            [self.comparison_id, "older"],
+        )
+
     def test_report_and_run_paths_stay_inside_runs_directory(self):
-        self.assertEqual(self.client.get("/runs/completed-run").status_code, 200)
+        report = self.client.get("/runs/completed-run")
+        self.assertEqual(report.status_code, 200)
+        self.assertNotIn(str(self.pipeline_root.resolve()), report.text)
+        self.assertIn("对应运行目录", report.text)
         self.assertEqual(self.client.get("/api/runs/missing-run").status_code, 404)
         self.assertEqual(self.client.get("/runs/missing-run").status_code, 404)
         self.assertEqual(self.client.get("/api/runs/%2e%2e%5cregistry.json").status_code, 404)
         self.assertEqual(self.client.get("/runs/%2e%2e%5cregistry.json").status_code, 404)
+        self.assertEqual(self.client.get("/api/comparisons/missing").status_code, 404)
+        self.assertEqual(self.client.get("/comparisons/missing").status_code, 404)
+        self.assertEqual(self.client.get("/api/comparisons/%2e%2e%5cregistry").status_code, 404)
+        self.assertEqual(self.client.get("/comparisons/%2e%2e%5cregistry").status_code, 404)
+
+    def test_relative_frozen_config_path_does_not_corrupt_report(self):
+        manifest_path = self.completed_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["config"] = "configs/baseline.yaml"
+        self._write_json(manifest_path, manifest)
+        response = self.client.get("/runs/completed-run")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<html>report at 对应运行目录</html>", response.text)
 
 
 if __name__ == "__main__":

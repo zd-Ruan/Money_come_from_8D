@@ -7,7 +7,6 @@ import pickle
 import platform
 import sys
 import traceback
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -17,26 +16,67 @@ import pandas as pd
 
 from .audit import AuditResult, audit_and_snapshot
 from .config import json_ready_config
-from .io import git_state, now_shanghai, write_json_atomic
+from .coverage import calculate_prediction_coverage, load_qlib_coverage_inputs
+from .factors import build_alpha158_factor_handler, factor_catalog_manifest
+from .integrity import generate_artifact_checksums, resolve_run_directory, source_tree_sha256, validate_run_id
+from .io import git_state, now_shanghai, sha256_file, write_json_atomic
 from .metrics import (
     annualized_return,
     beta_alpha,
     compounded_return,
-    correlation_t_stat,
     daily_ic,
+    evaluation_frame,
     finite,
     hac_t_stat,
+    independent_portfolio_performance,
     information_ratio,
     max_drawdown,
-    period_portfolio_performance,
+    relative_wealth_drawdown,
 )
 from .registry import update_registry
+from .small_account import SmallAccountExchange, summarize_execution_records
 from .windows import RollingFold, build_rolling_folds, load_calendar, shift_session, validate_fold_boundaries
 
 
 def make_run_id(project_name: str) -> str:
     stamp = now_shanghai().strftime("%Y%m%dT%H%M%S")
     return f"{stamp}-{project_name}"
+
+
+def _workspace_relative(path: Path | str, workspace: Path) -> str:
+    """Return a portable workspace-relative path without leaking local paths."""
+    resolved = Path(path).resolve()
+    try:
+        return resolved.relative_to(workspace.resolve()).as_posix()
+    except ValueError as exc:
+        raise ValueError(f"path is outside the workspace: {resolved.name}") from exc
+
+
+def _sanitize_workspace_text(value: str, workspace: Path) -> str:
+    return value.replace(str(workspace), "<workspace>").replace(workspace.as_posix(), "<workspace>")
+
+
+def backtest_bounds(calendar: pd.DatetimeIndex, first_signal_date: str, last_signal_date: str) -> tuple[str, str]:
+    """Return initial close-execution date and final realization date."""
+    start = shift_session(calendar, first_signal_date, 1)
+    end = shift_session(calendar, last_signal_date, 2)
+    return start, end
+
+
+def fold_is_complete(
+    fold: RollingFold,
+    calendar: pd.DatetimeIndex,
+    required_days: int,
+    last_realized_signal_date: str | None = None,
+) -> bool:
+    positions = {timestamp.date().isoformat(): index for index, timestamp in enumerate(calendar)}
+    effective_end = fold.test_end
+    if last_realized_signal_date is not None:
+        effective_end = min(
+            (pd.Timestamp(fold.test_end), pd.Timestamp(last_realized_signal_date))
+        ).date().isoformat()
+    actual = max(0, positions[effective_end] - positions[fold.test_start] + 1)
+    return actual >= int(required_days)
 
 
 def select_backtest_predictions(predictions: pd.DataFrame, last_signal_date: str) -> pd.DataFrame:
@@ -79,7 +119,7 @@ def _prepare_arrays(dataset, fold: RollingFold):
 
 def _model_params(config: dict[str, Any], seed: int) -> dict[str, Any]:
     model = config["model"]
-    return {
+    params = {
         "objective": model["objective"],
         "metric": "l2",
         "learning_rate": float(model["learning_rate"]),
@@ -98,8 +138,50 @@ def _model_params(config: dict[str, Any], seed: int) -> dict[str, Any]:
         "data_random_seed": int(config["project"]["random_seeds"][0]),
         "deterministic": True,
         "force_col_wise": True,
-        "verbosity": -1,
+        "verbosity": int(model.get("verbosity", -1)),
     }
+    device_type = str(model.get("device_type", "cpu"))
+    params["device_type"] = device_type
+    if device_type == "gpu":
+        params.update(
+            {
+                "gpu_platform_id": int(model.get("gpu_platform_id", 0)),
+                "gpu_device_id": int(model.get("gpu_device_id", 0)),
+                "gpu_use_dp": bool(model.get("gpu_use_dp", True)),
+                "max_bin": int(model.get("max_bin", 63)),
+            }
+        )
+        params.pop("deterministic", None)
+    return params
+
+
+def validate_lightgbm_device(config: dict[str, Any]) -> None:
+    """Fail before data preparation when the configured learner is unavailable."""
+    model = config["model"]
+    if str(model.get("device_type", "cpu")) != "gpu":
+        return
+    rng = np.random.default_rng(20260812)
+    probe = lgb.Dataset(
+        rng.normal(size=(4096, 8)),
+        label=rng.normal(size=4096),
+    )
+    try:
+        lgb.train(
+            {
+                "objective": "regression",
+                "device_type": "gpu",
+                "gpu_platform_id": int(model.get("gpu_platform_id", 0)),
+                "gpu_device_id": int(model.get("gpu_device_id", 0)),
+                "gpu_use_dp": bool(model.get("gpu_use_dp", True)),
+                "max_bin": int(model.get("max_bin", 63)),
+                "num_threads": int(model.get("num_threads", 1)),
+                "verbosity": int(model.get("verbosity", 1)),
+            },
+            probe,
+            num_boost_round=1,
+        )
+    except lgb.basic.LightGBMError as exc:
+        raise RuntimeError("configured LightGBM GPU learner is unavailable") from exc
 
 
 def train_fold(dataset, fold: RollingFold, config: dict[str, Any], fold_dir: Path) -> tuple[pd.DataFrame, dict]:
@@ -182,6 +264,7 @@ def train_fold(dataset, fold: RollingFold, config: dict[str, Any], fold_dir: Pat
             "test": test_features.index.get_level_values("instrument").nunique(),
         },
         "best_iterations": best_iterations,
+        "device_type": str(config["model"].get("device_type", "cpu")),
         "ic": finite(float(fold_ic.mean())),
         "rank_ic": finite(float(fold_rank_ic.mean())),
         "prediction_seed_std_mean": finite(float(prediction["score_std"].mean())),
@@ -198,14 +281,17 @@ def train_fold(dataset, fold: RollingFold, config: dict[str, Any], fold_dir: Pat
 
 
 def run_backtest(
-    predictions: pd.DataFrame, config: dict[str, Any], slippage_bps: int, backtest_end: str
+    predictions: pd.DataFrame,
+    config: dict[str, Any],
+    slippage_bps: int,
+    backtest_start: str,
+    backtest_end: str,
 ):
     from qlib.backtest import backtest
 
     strategy_config = config["strategy"]
     execution = config["execution"]
-    commission = int(execution["commission_bps_per_side"])
-    total_cost = (commission + slippage_bps) / 10000.0
+    commission_rate = float(execution["commission_bps_per_side"]) / 10000.0
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
@@ -228,51 +314,79 @@ def run_backtest(
         },
     }
     participation = float(execution["max_daily_volume_participation"])
+    exchange = SmallAccountExchange(
+        freq="day",
+        start_time=backtest_start,
+        end_time=backtest_end,
+        codes=config["data"]["market"],
+        deal_price=execution["deal_price"],
+        limit_threshold=float(execution["limit_threshold"]),
+        volume_threshold=("current", f"{participation} * $volume"),
+        commission_rate=commission_rate,
+        min_commission=float(execution["min_cost"]),
+        slippage_bps=float(slippage_bps),
+        trade_unit=int(execution["trade_unit"]),
+    )
     portfolio, indicators = backtest(
-        start_time=config["data"]["test_start_date"],
+        start_time=backtest_start,
         end_time=backtest_end,
         strategy=strategy,
         executor=executor,
         benchmark=config["data"]["benchmark"],
         account=float(execution["account"]),
-        exchange_kwargs={
-            "codes": config["data"]["market"],
-            "limit_threshold": float(execution["limit_threshold"]),
-            "deal_price": execution["deal_price"],
-            "open_cost": total_cost,
-            "close_cost": total_cost,
-            "min_cost": float(execution["min_cost"]),
-            "volume_threshold": ("current", f"{participation} * $volume"),
-        },
+        exchange_kwargs={"exchange": exchange},
     )
     report, positions = portfolio["1day"]
     indicator_frame, indicator_object = indicators["1day"]
-    return report, positions, indicator_frame, indicator_object
+    execution_records = exchange.execution_records
+    execution_summary = summarize_execution_records(execution_records)
+    execution_frame = pd.DataFrame(record.to_dict() for record in execution_records)
+    return report, positions, indicator_frame, indicator_object, execution_frame, execution_summary
 
 
-def summarize_backtest(report: pd.DataFrame, indicators: pd.DataFrame, slippage_bps: int) -> dict[str, Any]:
-    net = report["return"].fillna(0.0) - report["cost"].fillna(0.0)
-    benchmark = report["bench"].fillna(0.0)
+def summarize_backtest(
+    report: pd.DataFrame,
+    indicators: pd.DataFrame,
+    slippage_bps: int,
+    execution_summary: dict[str, Any],
+) -> dict[str, Any]:
+    aligned = evaluation_frame(report)
+    net = aligned["strategy_net"]
+    benchmark = aligned["benchmark"]
     excess = net - benchmark
     beta, alpha = beta_alpha(net, benchmark)
-    fill_rate = float(indicators["ffr"].dropna().mean()) if "ffr" in indicators else float("nan")
+    qlib_total_cost = float(report["total_cost"].iloc[-1])
+    ledger_total_cost = float(execution_summary.get("total_cost") or 0.0)
+    if not math.isclose(qlib_total_cost, ledger_total_cost, rel_tol=1e-9, abs_tol=1e-6):
+        raise RuntimeError(
+            f"execution ledger cost {ledger_total_cost} does not match portfolio cost {qlib_total_cost}"
+        )
+    relative_terminal = (1.0 + compounded_return(net)) / (1.0 + compounded_return(benchmark)) - 1.0
     return {
         "slippage_bps_per_side": slippage_bps,
-        "days": len(report),
+        "raw_execution_days": len(report),
+        "days": len(aligned),
+        "initial_execution_date": pd.Timestamp(report.index[0]).date().isoformat(),
+        "evaluation_start_date": pd.Timestamp(aligned.index[0]).date().isoformat(),
+        "evaluation_end_date": pd.Timestamp(aligned.index[-1]).date().isoformat(),
+        "alignment_method": "initial_cost_compounded_into_first_realized_return",
         "net_cumulative_return": finite(compounded_return(net)),
         "net_annualized_return": finite(annualized_return(net)),
         "benchmark_cumulative_return": finite(compounded_return(benchmark)),
+        "excess_cumulative_return": finite(relative_terminal),
         "excess_annualized_return": finite(float(excess.mean() * 252)),
         "information_ratio": finite(information_ratio(excess)),
         "excess_hac_t_stat": finite(hac_t_stat(excess)),
         "strategy_max_drawdown": finite(max_drawdown(net)),
-        "excess_max_drawdown": finite(max_drawdown(excess)),
+        "relative_wealth_max_drawdown": finite(relative_wealth_drawdown(net, benchmark)),
         "beta": finite(beta),
         "beta_adjusted_alpha_annualized": finite(alpha),
         "strategy_benchmark_correlation": finite(float(net.corr(benchmark))),
         "average_daily_turnover": finite(float(report["turnover"].mean())),
-        "total_cost": finite(float(report["total_cost"].iloc[-1])),
-        "fill_rate": finite(fill_rate),
+        "total_cost": finite(qlib_total_cost),
+        "fill_rate": finite(execution_summary.get("fill_rate")),
+        "execution": execution_summary,
+        "average_cash_utilization": finite(float((1.0 - report["cash"] / report["account"]).mean())),
         "terminal_account": finite(float(report["account"].iloc[-1])),
     }
 
@@ -284,11 +398,13 @@ def evaluate_gates(
     base = metrics["base"]
     required_stress = str(int(gates["required_stress_slippage_bps"]))
     stress = metrics["stress"][required_stress]
+    complete_folds = [
+        summary for summary in fold_summaries if summary.get("portfolio", {}).get("complete_for_gate") is True
+    ]
     positive_folds = sum(
-        (summary.get("portfolio", {}).get("excess_cumulative_return") or 0) > 0
-        for summary in fold_summaries
+        (summary["portfolio"].get("excess_cumulative_return") or 0) > 0 for summary in complete_folds
     )
-    fold_ratio = positive_folds / len(fold_summaries)
+    fold_ratio = positive_folds / len(complete_folds) if complete_folds else 0.0
 
     checks = [
         {"name": "data_valid", "passed": audit.report["data_valid"], "value": audit.report["data_valid"]},
@@ -312,9 +428,23 @@ def evaluate_gates(
         },
         {
             "name": "fill_rate",
-            "passed": (base["fill_rate"] or 0) >= float(gates["min_fill_rate"]),
+            "passed": base["fill_rate"] is not None
+            and base["fill_rate"] >= float(gates["min_fill_rate"]),
             "value": base["fill_rate"],
             "threshold": gates["min_fill_rate"],
+        },
+        {
+            "name": "zero_fill_order_rate",
+            "passed": base["execution"]["zero_fill_order_rate"] is not None
+            and base["execution"]["zero_fill_order_rate"] <= float(gates["max_zero_fill_order_rate"]),
+            "value": base["execution"]["zero_fill_order_rate"],
+            "threshold": gates["max_zero_fill_order_rate"],
+        },
+        {
+            "name": "minimum_complete_folds",
+            "passed": len(complete_folds) >= int(gates["min_complete_folds"]),
+            "value": len(complete_folds),
+            "threshold": gates["min_complete_folds"],
         },
         {
             "name": "fold_positive_excess_ratio",
@@ -329,10 +459,11 @@ def evaluate_gates(
             "threshold": gates["min_hac_t_stat"],
         },
         {
-            "name": "ic_t_stat",
-            "passed": (metrics["ic_t_stat"] or -math.inf) >= float(gates["min_ic_t_stat"]),
-            "value": metrics["ic_t_stat"],
-            "threshold": gates["min_ic_t_stat"],
+            "name": "rank_ic_hac_t_stat",
+            "passed": (metrics["rank_ic_hac_t_stat"] or -math.inf)
+            >= float(gates["min_rank_ic_hac_t_stat"]),
+            "value": metrics["rank_ic_hac_t_stat"],
+            "threshold": gates["min_rank_ic_hac_t_stat"],
         },
         {
             "name": "max_drawdown",
@@ -342,8 +473,8 @@ def evaluate_gates(
         },
         {
             "name": "stress_positive_excess",
-            "passed": (stress["net_cumulative_return"] or -1) > (stress["benchmark_cumulative_return"] or 0),
-            "value": (stress["net_cumulative_return"] or -1) - (stress["benchmark_cumulative_return"] or 0),
+            "passed": (stress["excess_cumulative_return"] or -1) > 0,
+            "value": stress["excess_cumulative_return"],
             "threshold": 0,
         },
     ]
@@ -362,17 +493,36 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
     from qlib.contrib.data.handler import Alpha158
     from qlib.data.dataset import DatasetH
 
-    run_id = run_id or make_run_id(config["project"]["name"])
-    run_dir = Path(config["paths"]["runs"]) / run_id
+    workspace = Path(config["_meta"]["workspace_root"]).resolve()
+    source_root = Path(__file__).resolve().parent
+    initial_source_sha256 = source_tree_sha256(source_root)
+    initial_git_state = git_state(workspace)
+    feature_mode = config["features"]["mode"]
+    frozen_factor_catalog = (
+        factor_catalog_manifest(config["features"].get("families") or None)
+        if feature_mode == "alpha158_plus_original"
+        else None
+    )
+    run_id = validate_run_id(run_id or make_run_id(config["project"]["name"]))
+    run_dir = resolve_run_directory(Path(config["paths"]["runs"]), run_id)
     if run_dir.exists():
         raise FileExistsError(f"run already exists: {run_dir}")
     run_dir.mkdir(parents=True)
     created_at = now_shanghai().isoformat()
     manifest_path = run_dir / "manifest.json"
-    manifest = {"run_id": run_id, "created_at": created_at, "status": "running"}
+    manifest = {
+        "run_id": run_id,
+        "created_at": created_at,
+        "status": "running",
+        "code": {"source_tree_sha256": initial_source_sha256},
+        "git": initial_git_state,
+    }
+    if frozen_factor_catalog is not None:
+        manifest["factor_catalog"] = frozen_factor_catalog
     write_json_atomic(manifest_path, manifest)
 
     try:
+        validate_lightgbm_device(config)
         audit = audit_and_snapshot(config)
         if not audit.report["data_valid"]:
             raise RuntimeError(f"data quality gate failed: {audit.report['blocking_issues']}")
@@ -392,14 +542,14 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
         write_json_atomic(run_dir / "folds.json", [fold.to_dict() for fold in folds])
 
         qlib.init(provider_uri=str(provider), region=config["data"]["region"], kernels=4)
-        handler = Alpha158(
-            instruments=config["data"]["market"],
-            start_time=config["data"]["start_date"],
-            end_time=config["data"]["end_date"],
-            fit_start_time=config["data"]["start_date"],
-            fit_end_time=folds[0].train_end,
-            label=([config["data"]["label"]], ["LABEL0"]),
-            filter_pipe=[
+        handler_kwargs = {
+            "instruments": config["data"]["market"],
+            "start_time": config["data"]["start_date"],
+            "end_time": config["data"]["end_date"],
+            "fit_start_time": config["data"]["start_date"],
+            "fit_end_time": folds[0].train_end,
+            "label": ([config["data"]["label"]], ["LABEL0"]),
+            "filter_pipe": [
                 {
                     "filter_type": "ExpressionDFilter",
                     "rule_expression": config["data"]["liquidity_expression"],
@@ -408,7 +558,14 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
                     "keep": False,
                 }
             ],
-        )
+        }
+        if feature_mode == "alpha158_plus_original":
+            handler = build_alpha158_factor_handler(
+                **handler_kwargs,
+                families=config["features"].get("families") or None,
+            )
+        else:
+            handler = Alpha158(**handler_kwargs)
         dataset = DatasetH(handler=handler, segments={})
 
         prediction_frames = []
@@ -445,18 +602,22 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
             -int(config["data"]["label_horizon_bars"]),
         )
         backtest_predictions = select_backtest_predictions(predictions, last_signal_date)
-        backtest_end = shift_session(calendar, last_signal_date, int(config["data"]["label_horizon_bars"]))
+        first_signal_date = pd.Timestamp(
+            backtest_predictions.index.get_level_values("datetime").min()
+        ).date().isoformat()
+        backtest_start, backtest_end = backtest_bounds(calendar, first_signal_date, last_signal_date)
         for slippage in scenarios:
             scenario_dir = run_dir / "backtests" / f"slippage_{slippage:02d}bps"
             scenario_dir.mkdir(parents=True)
-            report, positions, indicator_frame, indicator_object = run_backtest(
-                backtest_predictions, config, slippage, backtest_end
+            report, positions, indicator_frame, indicator_object, execution_frame, execution_summary = run_backtest(
+                backtest_predictions, config, slippage, backtest_start, backtest_end
             )
             report.to_parquet(scenario_dir / "report.parquet")
             indicator_frame.to_parquet(scenario_dir / "indicators.parquet")
+            execution_frame.to_parquet(scenario_dir / "executions.parquet", index=False)
             with (scenario_dir / "positions.pkl").open("wb") as handle:
                 pickle.dump(positions, handle)
-            summary = summarize_backtest(report, indicator_frame, slippage)
+            summary = summarize_backtest(report, indicator_frame, slippage, execution_summary)
             write_json_atomic(scenario_dir / "summary.json", summary)
             backtest_summaries[str(slippage)] = summary
             if slippage == base_slippage:
@@ -467,19 +628,63 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
 
         if base_report is None:
             raise RuntimeError("base slippage backtest did not produce a report")
-        for summary in fold_summaries:
-            portfolio_end = min(pd.Timestamp(summary["test_end"]), pd.Timestamp(backtest_end)).date().isoformat()
-            summary["portfolio"] = period_portfolio_performance(
-                base_report, summary["test_start"], portfolio_end
+        for summary, fold in zip(fold_summaries, folds):
+            fold_dates = backtest_predictions.index.get_level_values("datetime")
+            fold_predictions = backtest_predictions.loc[
+                (fold_dates >= pd.Timestamp(fold.test_start))
+                & (fold_dates <= pd.Timestamp(fold.test_end))
+            ]
+            if fold_predictions.empty:
+                raise RuntimeError(f"fold {fold.fold} has no realizable backtest predictions")
+            fold_first = pd.Timestamp(fold_predictions.index.get_level_values("datetime").min()).date().isoformat()
+            fold_last = pd.Timestamp(fold_predictions.index.get_level_values("datetime").max()).date().isoformat()
+            fold_start, fold_end = backtest_bounds(calendar, fold_first, fold_last)
+            fold_dir = run_dir / "folds" / f"fold_{fold.fold:02d}" / "backtest"
+            fold_dir.mkdir(parents=True, exist_ok=False)
+            (
+                fold_report,
+                fold_positions,
+                fold_indicators,
+                fold_indicator_object,
+                fold_executions,
+                fold_execution_summary,
+            ) = run_backtest(fold_predictions, config, base_slippage, fold_start, fold_end)
+            fold_report.to_parquet(fold_dir / "report.parquet")
+            fold_indicators.to_parquet(fold_dir / "indicators.parquet")
+            fold_executions.to_parquet(fold_dir / "executions.parquet", index=False)
+            summary["portfolio"] = independent_portfolio_performance(fold_report)
+            summary["portfolio"].update(
+                {
+                    "start": fold_start,
+                    "end": fold_end,
+                    "complete_for_gate": fold_is_complete(
+                        fold,
+                        calendar,
+                        int(config["rolling"]["test_days"]),
+                        last_signal_date,
+                    ),
+                    "execution": fold_execution_summary,
+                }
             )
-            summary["portfolio"]["start"] = summary["test_start"]
-            summary["portfolio"]["end"] = portfolio_end
             write_json_atomic(
                 run_dir / "folds" / f"fold_{int(summary['fold']):02d}" / "summary.json", summary
             )
+            del fold_positions, fold_indicator_object
+            gc.collect()
 
-        expected_rows = len(predictions)
-        prediction_coverage = float(predictions["score"].notna().sum() / expected_rows) if expected_rows else 0.0
+        coverage_inputs = load_qlib_coverage_inputs(
+            config["data"]["market"],
+            config["data"]["test_start_date"],
+            last_signal_date,
+            config["data"]["liquidity_expression"],
+        )
+        coverage = calculate_prediction_coverage(
+            coverage_inputs.active_spans,
+            coverage_inputs.calendar,
+            coverage_inputs.calendar,
+            coverage_inputs.eligibility,
+            backtest_predictions,
+        )
         metrics = {
             "base_slippage_bps_per_side": base_slippage,
             "base": backtest_summaries[str(base_slippage)],
@@ -488,14 +693,16 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
             "labeled_prediction_rows": len(labeled),
             "backtest_prediction_rows": len(backtest_predictions),
             "last_realized_signal_date": last_signal_date,
+            "backtest_start_date": backtest_start,
             "backtest_end_date": backtest_end,
-            "prediction_coverage": prediction_coverage,
+            "prediction_coverage": coverage["coverage"],
+            "prediction_coverage_audit": coverage,
             "prediction_days": predictions.index.get_level_values("datetime").nunique(),
             "prediction_instruments": predictions.index.get_level_values("instrument").nunique(),
             "ic": finite(float(ic.mean())),
-            "ic_t_stat": finite(correlation_t_stat(ic)),
+            "ic_hac_t_stat": finite(hac_t_stat(ic)),
             "rank_ic": finite(float(rank_ic.mean())),
-            "rank_ic_t_stat": finite(correlation_t_stat(rank_ic)),
+            "rank_ic_hac_t_stat": finite(hac_t_stat(rank_ic)),
             "folds": fold_summaries,
         }
         gates = evaluate_gates(config, audit, fold_summaries, metrics)
@@ -503,46 +710,79 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
         write_json_atomic(run_dir / "gates.json", gates)
         write_json_atomic(run_dir / "config.json", json_ready_config(config))
 
-        workspace = Path(config["_meta"]["workspace_root"])
         manifest = {
+            "schema_version": 2,
             "run_id": run_id,
             "created_at": created_at,
             "status": "reporting",
             "classification": gates["status"],
             "snapshot_id": audit.snapshot_id,
-            "snapshot_manifest": str(audit.snapshot_dir / "manifest.json"),
-            "config": str(config["_meta"]["config_path"]),
+            "snapshot_manifest": _workspace_relative(audit.snapshot_dir / "manifest.json", workspace),
+            "config": _workspace_relative(Path(config["_meta"]["config_path"]), workspace),
+            "data": {
+                "snapshot_id": audit.snapshot_id,
+                "source_fingerprint": audit.report["source_fingerprint"],
+                "snapshot_manifest": _workspace_relative(
+                    audit.snapshot_dir / "manifest.json", workspace
+                ),
+                "universe_mode": audit.report["universe_mode"],
+            },
+            "code": {"source_tree_sha256": initial_source_sha256},
             "environment": {
                 "python": sys.version,
                 "platform": platform.platform(),
                 "qlib": getattr(qlib, "__version__", "unknown"),
                 "lightgbm": lgb.__version__,
+                "model_device_type": str(config["model"].get("device_type", "cpu")),
             },
-            "git": git_state(workspace / "qlib"),
+            "git": initial_git_state,
             "artifacts": {
                 "predictions": "predictions.parquet",
                 "signal_metrics": "signal_metrics.parquet",
                 "metrics": "metrics.json",
                 "gates": "gates.json",
                 "report": "report.html",
+                "artifact_checksums": "artifact_checksums.json",
             },
         }
+        if frozen_factor_catalog is not None:
+            manifest["factor_catalog"] = frozen_factor_catalog
         write_json_atomic(manifest_path, manifest)
         from .report import generate_report
 
         generate_report(run_dir)
+
+        final_audit = audit_and_snapshot(config)
+        if (
+            final_audit.snapshot_id != audit.snapshot_id
+            or final_audit.report.get("source_fingerprint") != audit.report.get("source_fingerprint")
+        ):
+            raise RuntimeError("data source changed after the initial audit")
+        if source_tree_sha256(source_root) != initial_source_sha256:
+            raise RuntimeError("pipeline source changed while the run was executing")
+
+        checksum_path = generate_artifact_checksums(run_dir)
+        from .integrity import verify_artifact_checksums
+
+        integrity = verify_artifact_checksums(run_dir)
+        if not integrity["valid"]:
+            raise RuntimeError(f"artifact checksum verification failed: {integrity}")
+        manifest["integrity"] = {
+            "checksum_manifest": checksum_path.name,
+            "checksum_sha256": sha256_file(checksum_path),
+            "artifact_count": integrity["expected_count"],
+            "verified": True,
+        }
         manifest["completed_at"] = now_shanghai().isoformat()
         manifest["status"] = "completed"
         write_json_atomic(manifest_path, manifest)
-        update_registry(
-            Path(config["paths"]["registry"]),
-            {
+        registry_record = {
                 "run_id": run_id,
                 "created_at": created_at,
                 "completed_at": manifest["completed_at"],
                 "status": "completed",
                 "classification": gates["status"],
-                "run_dir": str(run_dir.resolve()),
+                "run_dir": _workspace_relative(run_dir, workspace),
                 "snapshot_id": audit.snapshot_id,
                 "metrics": {
                     "net_cumulative_return": metrics["base"]["net_cumulative_return"],
@@ -550,29 +790,44 @@ def run_pipeline(config: dict[str, Any], run_id: str | None = None) -> Path:
                     "ic": metrics["ic"],
                     "rank_ic": metrics["rank_ic"],
                     "max_drawdown": metrics["base"]["strategy_max_drawdown"],
+                    "relative_wealth_max_drawdown": metrics["base"]["relative_wealth_max_drawdown"],
                 },
-            },
-        )
+            }
+        try:
+            update_registry(Path(config["paths"]["registry"]), registry_record)
+            manifest["registry"] = {"updated": True}
+        except Exception as registry_exc:
+            manifest["registry"] = {
+                "updated": False,
+                "error": _sanitize_workspace_text(
+                    f"{type(registry_exc).__name__}: {registry_exc}", workspace
+                ),
+            }
+        write_json_atomic(manifest_path, manifest)
         return run_dir
     except Exception as exc:
+        sanitized_traceback = _sanitize_workspace_text(traceback.format_exc(), workspace)
         failure = {
             **manifest,
             "completed_at": now_shanghai().isoformat(),
             "status": "failed",
-            "error": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(),
+            "error": _sanitize_workspace_text(f"{type(exc).__name__}: {exc}", workspace),
+            "traceback": sanitized_traceback,
         }
         write_json_atomic(manifest_path, failure)
-        update_registry(
-            Path(config["paths"]["registry"]),
-            {
+        try:
+            update_registry(
+                Path(config["paths"]["registry"]),
+                {
                 "run_id": run_id,
                 "created_at": created_at,
                 "completed_at": failure["completed_at"],
                 "status": "failed",
                 "classification": "invalid",
-                "run_dir": str(run_dir.resolve()),
+                "run_dir": _workspace_relative(run_dir, workspace),
                 "error": failure["error"],
-            },
-        )
+                },
+            )
+        except Exception:
+            pass
         raise

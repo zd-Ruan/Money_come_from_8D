@@ -9,6 +9,7 @@ import yaml
 
 REQUIRED_SECTIONS = {
     "project",
+    "features",
     "paths",
     "data",
     "rolling",
@@ -52,6 +53,14 @@ def validate_config(config: dict[str, Any]) -> None:
     data = config["data"]
     rolling = config["rolling"]
     execution = config["execution"]
+    features = config["features"]
+    model = config["model"]
+    strategy = config["strategy"]
+    gates = config["gates"]
+    if features.get("mode") not in {"alpha158", "alpha158_plus_original"}:
+        raise ValueError("features.mode must be alpha158 or alpha158_plus_original")
+    if features["mode"] == "alpha158" and features.get("families"):
+        raise ValueError("Alpha158 baseline must not select original factor families")
     if int(data["label_horizon_bars"]) < 1:
         raise ValueError("label_horizon_bars must be positive")
     if int(rolling["purge_bars"]) < int(data["label_horizon_bars"]):
@@ -65,8 +74,32 @@ def validate_config(config: dict[str, Any]) -> None:
     if not stress or stress[0] < 0:
         raise ValueError("stress slippage values must be non-negative")
     execution["stress_slippage_bps_per_side"] = stress
+    if float(execution["account"]) <= 0:
+        raise ValueError("execution.account must be positive")
+    if int(execution.get("trade_unit", 0)) != 100:
+        raise ValueError("execution.trade_unit must be 100 for this ETF pipeline")
+    if int(execution.get("stamp_tax_bps", 0)) != 0:
+        raise ValueError("stock ETF stamp tax must remain zero unless the instrument scope changes")
+    if not 1 <= int(strategy["topk"]) <= 20:
+        raise ValueError("strategy.topk must be between 1 and 20")
+    if not 0 <= int(strategy["n_drop"]) <= int(strategy["topk"]):
+        raise ValueError("strategy.n_drop must be between zero and topk")
+    if int(strategy["hold_thresh"]) < 1:
+        raise ValueError("strategy.hold_thresh must be positive")
+    if model.get("device_type") not in {"cpu", "gpu"}:
+        raise ValueError("model.device_type must be cpu or gpu")
+    if int(gates["min_complete_folds"]) < 1:
+        raise ValueError("gates.min_complete_folds must be positive")
 
 
 def json_ready_config(config: dict[str, Any]) -> dict[str, Any]:
-    return json.loads(json.dumps(config, ensure_ascii=False, default=str))
-
+    ready = json.loads(json.dumps(config, ensure_ascii=False, default=str))
+    metadata = ready.pop("_meta", {})
+    workspace = Path(metadata.get("workspace_root", ".")).resolve()
+    for key, value in ready.get("paths", {}).items():
+        resolved = Path(value).resolve()
+        try:
+            ready["paths"][key] = resolved.relative_to(workspace).as_posix()
+        except ValueError:
+            ready["paths"][key] = resolved.as_posix()
+    return ready
