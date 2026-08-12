@@ -1,0 +1,31 @@
+{
+  "fold": 3,
+  "train_start": "2015-01-05",
+  "train_end": "2024-12-25",
+  "valid_start": "2024-12-30",
+  "valid_end": "2025-07-09",
+  "test_start": "2025-07-14",
+  "test_end": "2025-10-16",
+  "purge_bars": 2,
+  "rows": {
+    "train": 371716,
+    "valid": 63873,
+    "test_features": 41327,
+    "test_labels": 41321
+  },
+  "instruments": {
+    "train": 864,
+    "valid": 744,
+    "test": 824
+  },
+  "best_iterations": [
+    53,
+    54,
+    51
+  ],
+  "device_type": "gpu",
+  "ic": -0.03418638360253124,
+  "rank_ic": -0.02552473256023213,
+  "prediction_seed_std_mean": 0.008199182492818192,
+  "effective_test_end": "2025-10-16"
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": 2,
+  "run_id": "candidate_trend_crowding_cpu_20260813",
+  "created_at": "2026-08-13T01:00:07.793454+08:00",
+  "status": "completed",
+  "classification": "research_only",
+  "snapshot_id": "20260811-2a82246e51e9",
+  "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+  "config": "pipeline/configs/candidate_trend_crowding_cpu_20260813.yaml",
+  "data": {
+    "snapshot_id": "20260811-2a82246e51e9",
+    "source_fingerprint": "2a82246e51e9303b35739a8e7d33f59bdfe884367bf4b6be49d4aac948bea694",
+    "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+    "universe_mode": "current_snapshot"
+  },
+  "code": {
+    "source_tree_sha256": "88921eca2de2affb586ed2d02104ebe2bad0e2d5cf15d9527ec79c350077cf20"
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "qlib": "0.9.7",
+    "lightgbm": "4.7.0",
+    "model_device_type": "cpu"
+  },
+  "git": {
+    "available": true,
+    "commit": "684be5b4133bc793da079cb9225545e955829d0d",
+    "branch": "master",
+    "dirty": true,
+    "status": "M pipeline/registry.json\n M pipeline/src/quant_pipeline/factors.py\n M qlib/contrib/strategy/signal_strategy.py\n?? pipeline/configs/baseline_cpu_20260813.yaml\n?? pipeline/configs/baseline_home_rtx2060_20260811.yaml\n?? pipeline/configs/candidate_price_volume_divergence_cpu_20260813.yaml\n?? pipeline/configs/candidate_session_structure_cpu_20260813.yaml\n?? pipeline/configs/candidate_trend_crowding_cpu_20260813.yaml\n?? pipeline/configs/candidate_volume_impact_cpu_20260813.yaml\n?? pipeline/runs/20260812T235333-etf_alpha158_small_account/\n?? pipeline/runs/20260813T000025-etf_alpha158_small_account/\n?? pipeline/runs/baseline_cpu_20260813/\n?? pipeline/snapshots/20260811-2a82246e51e9/\n?? pipeline/snapshots/20260811-ceeb056e57e4/"
+  },
+  "artifacts": {
+    "predictions": "predictions.parquet",
+    "signal_metrics": "signal_metrics.parquet",
+    "metrics": "metrics.json",
+    "gates": "gates.json",
+    "report": "report.html",
+    "artifact_checksums": "artifact_checksums.json"
+  },
+  "factor_catalog": {
+    "catalog_version": "orc_ohlcv_v1",
+    "factors": [
+      {
+        "direction": -1,
+        "expression": "($close/Ref($close,20)-1)*Abs($close/Ref($close,20)-1)/(Sum(Abs($close/Ref($close,1)-1),20)+1e-12)*(Mean($volume,5)/(Mean($volume,20)+1e-12))",
+        "family": "trend_crowding",
+        "hypothesis": "A directionally efficient 20-bar move with accelerating participation is crowded and is more likely to partially unwind.",
+        "lookback": 20,
+        "name": "ORC_TREND_PATH_CROWD_20"
+      },
+      {
+        "direction": 1,
+        "expression": "(Slope($close,5)/(Mean($close,5)+1e-12)-Slope($close,20)/(Mean($close,20)+1e-12))*(1-Rsquare($close,20))",
+        "family": "trend_crowding",
+        "hypothesis": "Fast trend acceleration that is not yet explained by a highly linear slow trend represents a fresh rotation rather than a mature consensus trade.",
+        "lookback": 20,
+        "name": "ORC_TREND_ACCEL_UNCROWDED_5_20"
+      },
+      {
+        "direction": -1,
+        "expression": "Mean(Sign($close/Ref($close,1)-1),12)*Rsquare($close,12)*($volume/(Mean($volume,12)+1e-12))",
+        "family": "trend_crowding",
+        "hypothesis": "A one-sided, linear return streak accompanied by a current volume spike is late-stage demand or supply and should mean revert.",
+        "lookback": 12,
+        "name": "ORC_TREND_STREAK_EXHAUST_12"
+      },
+      {
+        "direction": -1,
+        "expression": "Rsquare($close,20)*(Std($close/Ref($close,1)-1,5)/(Std($close/Ref($close,1)-1,20)+1e-12))",
+        "family": "trend_crowding",
+        "hypothesis": "A highly linear 20-bar trend with unusually volatile short returns is crowded and is more likely to partially unwind than to continue cleanly.",
+        "lookback": 20,
+        "name": "ORC_TREND_RSQR_STRESS_20"
+      },
+      {
+        "direction": -1,
+        "expression": "(Slope($close,10)/$close)/(Slope($close,30)/$close+1e-12)-1",
+        "family": "trend_crowding",
+        "hypothesis": "A short-term normalized trend running far ahead of its medium-term trend is late acceleration rather than fresh trend strength and is more likely to revert.",
+        "lookback": 30,
+        "name": "ORC_TREND_ACCEL_GAP_10_30"
+      }
+    ],
+    "families": [
+      "trend_crowding"
+    ],
+    "protocol": {
+      "catalog_version": "orc_ohlcv_v1",
+      "discovery_scope": "purged rolling train and validation folds only",
+      "locked_holdout_policy": "Do not inspect or tune on the final chronological holdout until families, candidates, model, and strategy parameters are frozen; evaluate that holdout once.",
+      "multiplicity_control": "Benjamini-Hochberg false-discovery rate at q=0.10 within the frozen catalog",
+      "primary_metric": "mean validation daily rank IC in the declared direction",
+      "protocol_version": "purged_family_ablation_v1",
+      "required_robustness_checks": [
+        "same sign in a majority of validation folds",
+        "incremental result versus the unchanged Alpha158 baseline",
+        "positive net excess at the configured 10 bps slippage stress",
+        "no material concentration in one instrument or one fold",
+        "research-only classification while the ETF universe is not point-in-time"
+      ],
+      "stage_order": [
+        "family_ablation",
+        "candidate_confirmation",
+        "locked_holdout"
+      ]
+    },
+    "sha256": "e7997653cf19a1cdd834d433d690b6ca120941c6f012c6aeb5407592aeb2fa6f"
+  },
+  "integrity": {
+    "checksum_manifest": "artifact_checksums.json",
+    "checksum_sha256": "bae6ad19d5ed86882e8067bbd444f4a312a3a63041448e740e7e1728b9a9f817",
+    "artifact_count": 114,
+    "verified": true
+  },
+  "completed_at": "2026-08-13T01:04:44.938900+08:00",
+  "registry": {
+    "updated": true
+  }
+}

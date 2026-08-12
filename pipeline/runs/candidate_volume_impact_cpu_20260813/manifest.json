@@ -1,0 +1,120 @@
+{
+  "schema_version": 2,
+  "run_id": "candidate_volume_impact_cpu_20260813",
+  "created_at": "2026-08-13T01:04:52.922475+08:00",
+  "status": "completed",
+  "classification": "research_only",
+  "snapshot_id": "20260811-2a82246e51e9",
+  "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+  "config": "pipeline/configs/candidate_volume_impact_cpu_20260813.yaml",
+  "data": {
+    "snapshot_id": "20260811-2a82246e51e9",
+    "source_fingerprint": "2a82246e51e9303b35739a8e7d33f59bdfe884367bf4b6be49d4aac948bea694",
+    "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+    "universe_mode": "current_snapshot"
+  },
+  "code": {
+    "source_tree_sha256": "88921eca2de2affb586ed2d02104ebe2bad0e2d5cf15d9527ec79c350077cf20"
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "qlib": "0.9.7",
+    "lightgbm": "4.7.0",
+    "model_device_type": "cpu"
+  },
+  "git": {
+    "available": true,
+    "commit": "684be5b4133bc793da079cb9225545e955829d0d",
+    "branch": "master",
+    "dirty": true,
+    "status": "M pipeline/registry.json\n M pipeline/src/quant_pipeline/factors.py\n M qlib/contrib/strategy/signal_strategy.py\n?? pipeline/configs/baseline_cpu_20260813.yaml\n?? pipeline/configs/baseline_home_rtx2060_20260811.yaml\n?? pipeline/configs/candidate_price_volume_divergence_cpu_20260813.yaml\n?? pipeline/configs/candidate_session_structure_cpu_20260813.yaml\n?? pipeline/configs/candidate_trend_crowding_cpu_20260813.yaml\n?? pipeline/configs/candidate_volume_impact_cpu_20260813.yaml\n?? pipeline/runs/20260812T235333-etf_alpha158_small_account/\n?? pipeline/runs/20260813T000025-etf_alpha158_small_account/\n?? pipeline/runs/baseline_cpu_20260813/\n?? pipeline/runs/candidate_trend_crowding_cpu_20260813/\n?? pipeline/snapshots/20260811-2a82246e51e9/\n?? pipeline/snapshots/20260811-ceeb056e57e4/"
+  },
+  "artifacts": {
+    "predictions": "predictions.parquet",
+    "signal_metrics": "signal_metrics.parquet",
+    "metrics": "metrics.json",
+    "gates": "gates.json",
+    "report": "report.html",
+    "artifact_checksums": "artifact_checksums.json"
+  },
+  "factor_catalog": {
+    "catalog_version": "orc_ohlcv_v1",
+    "factors": [
+      {
+        "direction": -1,
+        "expression": "($close/Ref($close,1)-1)*($volume/(Mean(Ref($volume,1),20)+1e-12))*Abs($close-$open)/($high-$low+1e-12)",
+        "family": "volume_impact",
+        "hypothesis": "A large signed close-to-close move, delivered as a full-bodied bar on exceptional volume, contains transient market impact that should decay.",
+        "lookback": 20,
+        "name": "ORC_SIGNED_IMPACT_SHOCK_20"
+      },
+      {
+        "direction": 1,
+        "expression": "($close/Ref($close,1)-1)/(Abs($volume/(Mean(Ref($volume,1),20)+1e-12)-1)+0.05)",
+        "family": "volume_impact",
+        "hypothesis": "Directional price discovery achieved without an extreme volume dislocation is less impact-driven and is more likely to persist.",
+        "lookback": 20,
+        "name": "ORC_RETURN_PER_VOLUME_SURPRISE_20"
+      },
+      {
+        "direction": -1,
+        "expression": "Corr(Abs($close/Ref($close,1)-1),Log($volume+1),20)*(Std($volume,20)/(Mean($volume,20)+1e-12))*Sign($close/Ref($close,5)-1)",
+        "family": "volume_impact",
+        "hypothesis": "A signed short trend is fragile when absolute returns are tightly coupled to volume and volume itself is unstable, indicating concentrated liquidity impact.",
+        "lookback": 20,
+        "name": "ORC_IMPACT_CONCENTRATION_20"
+      },
+      {
+        "direction": -1,
+        "expression": "($volume/Mean(Ref($volume,1),20))*(2*$close-$high-$low)/($high-$low+1e-12)",
+        "family": "volume_impact",
+        "hypothesis": "Exceptional volume combined with a lower-close candle indicates absorption or distribution that is more likely to be followed by a short-term fade.",
+        "lookback": 20,
+        "name": "ORC_VOLUME_CLIMAX_10"
+      },
+      {
+        "direction": 1,
+        "expression": "Mean($close/Ref($close,1)-1,20)/(Std($volume,20)/(Mean($volume,20)+1e-12)+1e-12)",
+        "family": "volume_impact",
+        "hypothesis": "A directional return trend achieved with stable, orderly volume is more sustainable than the same trend delivered with unstable participation.",
+        "lookback": 20,
+        "name": "ORC_VOLUME_STABILITY_TREND_20"
+      }
+    ],
+    "families": [
+      "volume_impact"
+    ],
+    "protocol": {
+      "catalog_version": "orc_ohlcv_v1",
+      "discovery_scope": "purged rolling train and validation folds only",
+      "locked_holdout_policy": "Do not inspect or tune on the final chronological holdout until families, candidates, model, and strategy parameters are frozen; evaluate that holdout once.",
+      "multiplicity_control": "Benjamini-Hochberg false-discovery rate at q=0.10 within the frozen catalog",
+      "primary_metric": "mean validation daily rank IC in the declared direction",
+      "protocol_version": "purged_family_ablation_v1",
+      "required_robustness_checks": [
+        "same sign in a majority of validation folds",
+        "incremental result versus the unchanged Alpha158 baseline",
+        "positive net excess at the configured 10 bps slippage stress",
+        "no material concentration in one instrument or one fold",
+        "research-only classification while the ETF universe is not point-in-time"
+      ],
+      "stage_order": [
+        "family_ablation",
+        "candidate_confirmation",
+        "locked_holdout"
+      ]
+    },
+    "sha256": "9b33e0bbded805f5abce77c894b16c2052f3e548f4559481db63e3f085778c49"
+  },
+  "integrity": {
+    "checksum_manifest": "artifact_checksums.json",
+    "checksum_sha256": "bbf27ecdf3f7ac7c3e6b2c4c5e1b3ac6fe82a044d7769162e0ea547919574ee2",
+    "artifact_count": 114,
+    "verified": true
+  },
+  "completed_at": "2026-08-13T01:09:25.257733+08:00",
+  "registry": {
+    "updated": true
+  }
+}

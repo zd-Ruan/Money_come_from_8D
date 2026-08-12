@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "run_id": "baseline_cpu_20260813",
+  "created_at": "2026-08-13T00:55:19.321601+08:00",
+  "status": "completed",
+  "classification": "research_only",
+  "snapshot_id": "20260811-2a82246e51e9",
+  "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+  "config": "pipeline/configs/baseline_cpu_20260813.yaml",
+  "data": {
+    "snapshot_id": "20260811-2a82246e51e9",
+    "source_fingerprint": "2a82246e51e9303b35739a8e7d33f59bdfe884367bf4b6be49d4aac948bea694",
+    "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+    "universe_mode": "current_snapshot"
+  },
+  "code": {
+    "source_tree_sha256": "88921eca2de2affb586ed2d02104ebe2bad0e2d5cf15d9527ec79c350077cf20"
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "qlib": "0.9.7",
+    "lightgbm": "4.7.0",
+    "model_device_type": "cpu"
+  },
+  "git": {
+    "available": true,
+    "commit": "684be5b4133bc793da079cb9225545e955829d0d",
+    "branch": "master",
+    "dirty": true,
+    "status": "M pipeline/registry.json\n M pipeline/src/quant_pipeline/factors.py\n M qlib/contrib/strategy/signal_strategy.py\n?? pipeline/configs/baseline_cpu_20260813.yaml\n?? pipeline/configs/baseline_home_rtx2060_20260811.yaml\n?? pipeline/configs/candidate_trend_crowding_cpu_20260813.yaml\n?? pipeline/runs/20260812T235333-etf_alpha158_small_account/\n?? pipeline/runs/20260813T000025-etf_alpha158_small_account/\n?? pipeline/snapshots/20260811-2a82246e51e9/\n?? pipeline/snapshots/20260811-ceeb056e57e4/"
+  },
+  "artifacts": {
+    "predictions": "predictions.parquet",
+    "signal_metrics": "signal_metrics.parquet",
+    "metrics": "metrics.json",
+    "gates": "gates.json",
+    "report": "report.html",
+    "artifact_checksums": "artifact_checksums.json"
+  },
+  "integrity": {
+    "checksum_manifest": "artifact_checksums.json",
+    "checksum_sha256": "6e2d68a95bd874b4f8a43d31764bfce8c7cec1124c01104097acaf74c6f107ec",
+    "artifact_count": 114,
+    "verified": true
+  },
+  "completed_at": "2026-08-13T00:59:57.225008+08:00",
+  "registry": {
+    "updated": true
+  }
+}

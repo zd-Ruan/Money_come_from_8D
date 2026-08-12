@@ -1,0 +1,72 @@
+[
+  {
+    "fold": 1,
+    "train_start": "2015-01-05",
+    "train_end": "2024-06-21",
+    "valid_start": "2024-06-26",
+    "valid_end": "2024-12-27",
+    "test_start": "2025-01-02",
+    "test_end": "2025-04-09",
+    "purge_bars": 2
+  },
+  {
+    "fold": 2,
+    "train_start": "2015-01-05",
+    "train_end": "2024-09-20",
+    "valid_start": "2024-09-25",
+    "valid_end": "2025-04-07",
+    "test_start": "2025-04-10",
+    "test_end": "2025-07-11",
+    "purge_bars": 2
+  },
+  {
+    "fold": 3,
+    "train_start": "2015-01-05",
+    "train_end": "2024-12-25",
+    "valid_start": "2024-12-30",
+    "valid_end": "2025-07-09",
+    "test_start": "2025-07-14",
+    "test_end": "2025-10-16",
+    "purge_bars": 2
+  },
+  {
+    "fold": 4,
+    "train_start": "2015-01-05",
+    "train_end": "2025-04-02",
+    "valid_start": "2025-04-08",
+    "valid_end": "2025-10-14",
+    "test_start": "2025-10-17",
+    "test_end": "2026-01-15",
+    "purge_bars": 2
+  },
+  {
+    "fold": 5,
+    "train_start": "2015-01-05",
+    "train_end": "2025-07-07",
+    "valid_start": "2025-07-10",
+    "valid_end": "2026-01-13",
+    "test_start": "2026-01-16",
+    "test_end": "2026-04-23",
+    "purge_bars": 2
+  },
+  {
+    "fold": 6,
+    "train_start": "2015-01-05",
+    "train_end": "2025-10-10",
+    "valid_start": "2025-10-15",
+    "valid_end": "2026-04-21",
+    "test_start": "2026-04-24",
+    "test_end": "2026-07-27",
+    "purge_bars": 2
+  },
+  {
+    "fold": 7,
+    "train_start": "2015-01-05",
+    "train_end": "2026-01-09",
+    "valid_start": "2026-01-14",
+    "valid_end": "2026-07-23",
+    "test_start": "2026-07-28",
+    "test_end": "2026-08-11",
+    "purge_bars": 2
+  }
+]

@@ -354,6 +354,104 @@ ORIGINAL_RESEARCH_CANDIDATES: tuple[FactorDefinition, ...] = (
         ),
         lookback=20,
     ),
+    FactorDefinition(
+        name="ORC_TREND_RSQR_STRESS_20",
+        family="trend_crowding",
+        expression=(
+            "Rsquare($close,20)"
+            "*(Std($close/Ref($close,1)-1,5)/(Std($close/Ref($close,1)-1,20)+1e-12))"
+        ),
+        direction=-1,
+        hypothesis=(
+            "A highly linear 20-bar trend with unusually volatile short returns is crowded and is more likely to "
+            "partially unwind than to continue cleanly."
+        ),
+        lookback=20,
+    ),
+    FactorDefinition(
+        name="ORC_TREND_ACCEL_GAP_10_30",
+        family="trend_crowding",
+        expression=(
+            "(Slope($close,10)/$close)/(Slope($close,30)/$close+1e-12)-1"
+        ),
+        direction=-1,
+        hypothesis=(
+            "A short-term normalized trend running far ahead of its medium-term trend is late acceleration rather "
+            "than fresh trend strength and is more likely to revert."
+        ),
+        lookback=30,
+    ),
+    FactorDefinition(
+        name="ORC_VOLUME_CLIMAX_10",
+        family="volume_impact",
+        expression=(
+            "($volume/Mean(Ref($volume,1),20))"
+            "*(2*$close-$high-$low)/($high-$low+1e-12)"
+        ),
+        direction=-1,
+        hypothesis=(
+            "Exceptional volume combined with a lower-close candle indicates absorption or distribution that is "
+            "more likely to be followed by a short-term fade."
+        ),
+        lookback=20,
+    ),
+    FactorDefinition(
+        name="ORC_VOLUME_STABILITY_TREND_20",
+        family="volume_impact",
+        expression=(
+            "Mean($close/Ref($close,1)-1,20)"
+            "/(Std($volume,20)/(Mean($volume,20)+1e-12)+1e-12)"
+        ),
+        direction=1,
+        hypothesis=(
+            "A directional return trend achieved with stable, orderly volume is more sustainable than the same "
+            "trend delivered with unstable participation."
+        ),
+        lookback=20,
+    ),
+    FactorDefinition(
+        name="ORC_NET_VOLUME_PRESSURE_20",
+        family="price_volume_divergence",
+        expression=(
+            "(Sum(Greater($close,Ref($close,1))*$volume,20)"
+            "-Sum(Greater(Ref($close,1),$close)*$volume,20))"
+            "/(Sum($volume,20)+1e-12)"
+        ),
+        direction=1,
+        hypothesis=(
+            "Up-bar volume dominance over down-bar volume is a signed participation measure; positive net pressure "
+            "is expected to precede positive returns."
+        ),
+        lookback=20,
+    ),
+    FactorDefinition(
+        name="ORC_VOLUME_TREND_DIVERGENCE_10",
+        family="price_volume_divergence",
+        expression=(
+            "($close/Ref($close,10)-1)"
+            "*(1-$volume/(Mean(Ref($volume,1),10)+1e-12))"
+        ),
+        direction=-1,
+        hypothesis=(
+            "A 10-bar price move unsupported by current participation relative to its own 10-bar volume profile is "
+            "vulnerable to a symmetric reversal."
+        ),
+        lookback=10,
+    ),
+    FactorDefinition(
+        name="ORC_INTRADAY_RANGE_RETURN_10",
+        family="session_structure",
+        expression=(
+            "Mean(($close-$open)/$open,10)"
+            "/(Std(($close-$open)/$open,20)+1e-12)"
+        ),
+        direction=1,
+        hypothesis=(
+            "A stable positive intraday drift relative to the volatility of its own recent open-to-close moves "
+            "reflects persistent session-level buying pressure."
+        ),
+        lookback=20,
+    ),
 )
 
 

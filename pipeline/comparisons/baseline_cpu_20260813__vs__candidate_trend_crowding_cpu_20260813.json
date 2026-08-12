@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "comparison_status": "completed",
+  "status": "not_improved",
+  "baseline_run_id": "baseline_cpu_20260813",
+  "candidate_run_id": "candidate_trend_crowding_cpu_20260813",
+  "comparable": true,
+  "reasons": [
+    "improvement criterion not met: terminal_relative_wealth_positive",
+    "improvement criterion not met: daily_return_difference_positive",
+    "improvement criterion not met: daily_return_hac_significant",
+    "improvement criterion not met: ic_difference_non_negative",
+    "improvement criterion not met: rank_ic_difference_non_negative",
+    "improvement criterion not met: at_least_one_signal_hac_significant"
+  ],
+  "conditions": {
+    "source_fingerprint": "2a82246e51e9303b35739a8e7d33f59bdfe884367bf4b6be49d4aac948bea694",
+    "snapshot_id": "20260811-2a82246e51e9",
+    "source_tree_sha256": "88921eca2de2affb586ed2d02104ebe2bad0e2d5cf15d9527ec79c350077cf20",
+    "base_slippage_bps_per_side": 5,
+    "evaluation_start_date": "2025-01-06",
+    "evaluation_end_date": "2026-08-11",
+    "return_observations": 387,
+    "signal_start_date": "2025-01-02",
+    "signal_end_date": "2026-08-07",
+    "signal_observations": 387
+  },
+  "thresholds": {
+    "hac_t_stat": 1.96,
+    "hac_max_lag": 5,
+    "fold_win_rate": 0.5
+  },
+  "deltas": {
+    "terminal_relative_wealth": {
+      "baseline": 1.3700377456857562,
+      "candidate": 1.183547838639503,
+      "difference": -0.18648990704625312
+    },
+    "daily_strategy_return": {
+      "observations": 387,
+      "baseline_mean": 0.0016700583609679989,
+      "candidate_mean": 0.001278080875176549,
+      "mean_difference": -0.0003919774857914497,
+      "hac_t_stat": -0.6641786252552064
+    },
+    "ic": {
+      "observations": 387,
+      "baseline_mean": 0.010373086845029668,
+      "candidate_mean": 0.008311094012204428,
+      "mean_difference": -0.00206199283282524,
+      "hac_t_stat": -0.4339215564166397
+    },
+    "rank_ic": {
+      "observations": 387,
+      "baseline_mean": 0.01573153291445781,
+      "candidate_mean": 0.013912415002918505,
+      "mean_difference": -0.0018191179115393048,
+      "hac_t_stat": -0.405342528577748
+    },
+    "folds": {
+      "folds": 7,
+      "complete_folds": 6,
+      "residual_folds": 1,
+      "wins": 4,
+      "losses": 2,
+      "ties": 0,
+      "win_rate": 0.6666666666666666,
+      "records": [
+        {
+          "fold": 1,
+          "signal_start": "2025-01-02",
+          "signal_end": "2025-04-09",
+          "start": "2025-01-06",
+          "end": "2025-04-11",
+          "observations": 63,
+          "complete_for_gate": true,
+          "included_in_win_rate": true,
+          "baseline_terminal_wealth": 1.0158360035542005,
+          "candidate_terminal_wealth": 0.9960867567009768,
+          "benchmark_terminal_wealth": 0.992072343826294,
+          "baseline_terminal_relative_wealth": 1.0239535552782906,
+          "candidate_terminal_relative_wealth": 1.0040464920725436,
+          "terminal_relative_wealth_difference": -0.019907063205746978,
+          "outcome": "loss"
+        },
+        {
+          "fold": 2,
+          "signal_start": "2025-04-10",
+          "signal_end": "2025-07-11",
+          "start": "2025-04-14",
+          "end": "2025-07-15",
+          "observations": 63,
+          "complete_for_gate": true,
+          "included_in_win_rate": true,
+          "baseline_terminal_wealth": 1.1467640423149748,
+          "candidate_terminal_wealth": 1.2348464775771677,
+          "benchmark_terminal_wealth": 1.0898321866989136,
+          "baseline_terminal_relative_wealth": 1.0522391027819678,
+          "candidate_terminal_relative_wealth": 1.1330611195449278,
+          "terminal_relative_wealth_difference": 0.08082201676296008,
+          "outcome": "win"
+        },
+        {
+          "fold": 3,
+          "signal_start": "2025-07-14",
+          "signal_end": "2025-10-16",
+          "start": "2025-07-16",
+          "end": "2025-10-20",
+          "observations": 63,
+          "complete_for_gate": true,
+          "included_in_win_rate": true,
+          "baseline_terminal_wealth": 1.1303586002999217,
+          "candidate_terminal_wealth": 1.214302974839653,
+          "benchmark_terminal_wealth": 1.1420989036560059,
+          "baseline_terminal_relative_wealth": 0.9897204144768007,
+          "candidate_terminal_relative_wealth": 1.0632205065187548,
+          "terminal_relative_wealth_difference": 0.07350009204195407,
+          "outcome": "win"
+        },
+        {
+          "fold": 4,
+          "signal_start": "2025-10-17",
+          "signal_end": "2026-01-15",
+          "start": "2025-10-21",
+          "end": "2026-01-19",
+          "observations": 63,
+          "complete_for_gate": true,
+          "included_in_win_rate": true,
+          "baseline_terminal_wealth": 1.051569849563738,
+          "candidate_terminal_wealth": 1.0091564924918024,
+          "benchmark_terminal_wealth": 1.048925518989563,
+          "baseline_terminal_relative_wealth": 1.0025209898379843,
+          "candidate_terminal_relative_wealth": 0.9620859386316863,
+          "terminal_relative_wealth_difference": -0.04043505120629798,
+          "outcome": "loss"
+        },
+        {
+          "fold": 5,
+          "signal_start": "2026-01-16",
+          "signal_end": "2026-04-23",
+          "start": "2026-01-20",
+          "end": "2026-04-27",
+          "observations": 63,
+          "complete_for_gate": true,
+          "included_in_win_rate": true,
+          "baseline_terminal_wealth": 0.8654172461280427,
+          "candidate_terminal_wealth": 0.9225980026470444,
+          "benchmark_terminal_wealth": 1.009286642074585,
+          "baseline_terminal_relative_wealth": 0.857454374259012,
+          "candidate_terminal_relative_wealth": 0.9141089995510567,
+          "terminal_relative_wealth_difference": 0.05665462529204468,
+          "outcome": "win"
+        },
+        {
+          "fold": 6,
+          "signal_start": "2026-04-24",
+          "signal_end": "2026-07-27",
+          "start": "2026-04-28",
+          "end": "2026-07-29",
+          "observations": 63,
+          "complete_for_gate": true,
+          "included_in_win_rate": true,
+          "baseline_terminal_wealth": 1.1006545523423155,
+          "candidate_terminal_wealth": 1.1586494557276243,
+          "benchmark_terminal_wealth": 0.9738602638244629,
+          "baseline_terminal_relative_wealth": 1.1301976199541366,
+          "candidate_terminal_relative_wealth": 1.1897491855530409,
+          "terminal_relative_wealth_difference": 0.05955156559890429,
+          "outcome": "win"
+        },
+        {
+          "fold": 7,
+          "signal_start": "2026-07-28",
+          "signal_end": "2026-08-07",
+          "start": "2026-07-30",
+          "end": "2026-08-11",
+          "observations": 9,
+          "complete_for_gate": false,
+          "included_in_win_rate": false,
+          "baseline_terminal_wealth": 1.1026204090871103,
+          "candidate_terminal_wealth": 1.086109029038574,
+          "benchmark_terminal_wealth": 1.0152456760406494,
+          "baseline_terminal_relative_wealth": 1.0860626497688846,
+          "candidate_terminal_relative_wealth": 1.069799216751441,
+          "terminal_relative_wealth_difference": -0.016263433017443596,
+          "outcome": "loss"
+        }
+      ]
+    }
+  },
+  "decision": {
+    "claim": "Improvement is not established; no positive claim is permitted.",
+    "criteria": {
+      "terminal_relative_wealth_positive": false,
+      "daily_return_difference_positive": false,
+      "daily_return_hac_significant": false,
+      "fold_win_rate_majority": true,
+      "ic_difference_non_negative": false,
+      "rank_ic_difference_non_negative": false,
+      "at_least_one_signal_hac_significant": false
+    }
+  },
+  "scope": "paired incremental research evidence only; not live-performance or promotion evidence",
+  "generated_at": "2026-08-13T01:18:58.430639+08:00"
+}

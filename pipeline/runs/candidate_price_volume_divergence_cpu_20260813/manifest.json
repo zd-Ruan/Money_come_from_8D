@@ -1,0 +1,128 @@
+{
+  "schema_version": 2,
+  "run_id": "candidate_price_volume_divergence_cpu_20260813",
+  "created_at": "2026-08-13T01:09:33.711695+08:00",
+  "status": "completed",
+  "classification": "research_only",
+  "snapshot_id": "20260811-2a82246e51e9",
+  "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+  "config": "pipeline/configs/candidate_price_volume_divergence_cpu_20260813.yaml",
+  "data": {
+    "snapshot_id": "20260811-2a82246e51e9",
+    "source_fingerprint": "2a82246e51e9303b35739a8e7d33f59bdfe884367bf4b6be49d4aac948bea694",
+    "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+    "universe_mode": "current_snapshot"
+  },
+  "code": {
+    "source_tree_sha256": "88921eca2de2affb586ed2d02104ebe2bad0e2d5cf15d9527ec79c350077cf20"
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "qlib": "0.9.7",
+    "lightgbm": "4.7.0",
+    "model_device_type": "cpu"
+  },
+  "git": {
+    "available": true,
+    "commit": "684be5b4133bc793da079cb9225545e955829d0d",
+    "branch": "master",
+    "dirty": true,
+    "status": "M pipeline/registry.json\n M pipeline/src/quant_pipeline/factors.py\n M qlib/contrib/strategy/signal_strategy.py\n?? pipeline/configs/baseline_cpu_20260813.yaml\n?? pipeline/configs/baseline_home_rtx2060_20260811.yaml\n?? pipeline/configs/candidate_price_volume_divergence_cpu_20260813.yaml\n?? pipeline/configs/candidate_session_structure_cpu_20260813.yaml\n?? pipeline/configs/candidate_trend_crowding_cpu_20260813.yaml\n?? pipeline/configs/candidate_volume_impact_cpu_20260813.yaml\n?? pipeline/runs/20260812T235333-etf_alpha158_small_account/\n?? pipeline/runs/20260813T000025-etf_alpha158_small_account/\n?? pipeline/runs/baseline_cpu_20260813/\n?? pipeline/runs/candidate_trend_crowding_cpu_20260813/\n?? pipeline/runs/candidate_volume_impact_cpu_20260813/\n?? pipeline/snapshots/20260811-2a82246e51e9/\n?? pipeline/snapshots/20260811-ceeb056e57e4/"
+  },
+  "artifacts": {
+    "predictions": "predictions.parquet",
+    "signal_metrics": "signal_metrics.parquet",
+    "metrics": "metrics.json",
+    "gates": "gates.json",
+    "report": "report.html",
+    "artifact_checksums": "artifact_checksums.json"
+  },
+  "factor_catalog": {
+    "catalog_version": "orc_ohlcv_v1",
+    "factors": [
+      {
+        "direction": -1,
+        "expression": "($close/Ref($close,10)-1)*(1-$volume/(Mean(Ref($volume,1),20)+1e-12))",
+        "family": "price_volume_divergence",
+        "hypothesis": "A 10-bar price move unsupported by current participation relative to prior volume is vulnerable to a symmetric reversal.",
+        "lookback": 20,
+        "name": "ORC_TREND_VOLUME_DIVERGENCE_10_20"
+      },
+      {
+        "direction": 1,
+        "expression": "Mean(Sign($close/Ref($close,1)-1)*Log($volume+1),10)/(Mean(Log($volume+1),10)+1e-12)-Mean(Sign($close/Ref($close,1)-1),10)",
+        "family": "price_volume_divergence",
+        "hypothesis": "The gap between volume-weighted return direction and the unweighted up/down hit rate isolates participation by the more informative bars.",
+        "lookback": 10,
+        "name": "ORC_VOLUME_WEIGHTED_DIRECTION_10"
+      },
+      {
+        "direction": 1,
+        "expression": "Corr(Ref($volume/Ref($volume,1)-1,1),$close/Ref($close,1)-1,20)*($volume/Ref($volume,1)-1)",
+        "family": "price_volume_divergence",
+        "hypothesis": "When an ETF has recently transmitted volume changes into next-bar returns, the current volume impulse provides a signed lead signal.",
+        "lookback": 21,
+        "name": "ORC_LAGGED_VOLUME_LEAD_20"
+      },
+      {
+        "direction": 1,
+        "expression": "($close/Ref($close,5)-1)*(Corr($close/Ref($close,1)-1,$volume/Ref($volume,1)-1,5)-Corr($close/Ref($close,1)-1,$volume/Ref($volume,1)-1,20))",
+        "family": "price_volume_divergence",
+        "hypothesis": "A recent increase in price-volume coherence confirms a five-bar trend before that relationship is visible in its slower baseline.",
+        "lookback": 20,
+        "name": "ORC_PV_COHERENCE_SHIFT_5_20"
+      },
+      {
+        "direction": 1,
+        "expression": "(Sum(Greater($close,Ref($close,1))*$volume,20)-Sum(Greater(Ref($close,1),$close)*$volume,20))/(Sum($volume,20)+1e-12)",
+        "family": "price_volume_divergence",
+        "hypothesis": "Up-bar volume dominance over down-bar volume is a signed participation measure; positive net pressure is expected to precede positive returns.",
+        "lookback": 20,
+        "name": "ORC_NET_VOLUME_PRESSURE_20"
+      },
+      {
+        "direction": -1,
+        "expression": "($close/Ref($close,10)-1)*(1-$volume/(Mean(Ref($volume,1),10)+1e-12))",
+        "family": "price_volume_divergence",
+        "hypothesis": "A 10-bar price move unsupported by current participation relative to its own 10-bar volume profile is vulnerable to a symmetric reversal.",
+        "lookback": 10,
+        "name": "ORC_VOLUME_TREND_DIVERGENCE_10"
+      }
+    ],
+    "families": [
+      "price_volume_divergence"
+    ],
+    "protocol": {
+      "catalog_version": "orc_ohlcv_v1",
+      "discovery_scope": "purged rolling train and validation folds only",
+      "locked_holdout_policy": "Do not inspect or tune on the final chronological holdout until families, candidates, model, and strategy parameters are frozen; evaluate that holdout once.",
+      "multiplicity_control": "Benjamini-Hochberg false-discovery rate at q=0.10 within the frozen catalog",
+      "primary_metric": "mean validation daily rank IC in the declared direction",
+      "protocol_version": "purged_family_ablation_v1",
+      "required_robustness_checks": [
+        "same sign in a majority of validation folds",
+        "incremental result versus the unchanged Alpha158 baseline",
+        "positive net excess at the configured 10 bps slippage stress",
+        "no material concentration in one instrument or one fold",
+        "research-only classification while the ETF universe is not point-in-time"
+      ],
+      "stage_order": [
+        "family_ablation",
+        "candidate_confirmation",
+        "locked_holdout"
+      ]
+    },
+    "sha256": "2e6fb74214a26020323c8cb0e92b2349e1193018a96b7d37203a69b73c08d40f"
+  },
+  "integrity": {
+    "checksum_manifest": "artifact_checksums.json",
+    "checksum_sha256": "9613479fa4cd6cc91d63b3ee9952a83e6fd1ea1d1aab6bc53952521d7d9a425e",
+    "artifact_count": 114,
+    "verified": true
+  },
+  "completed_at": "2026-08-13T01:14:05.724711+08:00",
+  "registry": {
+    "updated": true
+  }
+}

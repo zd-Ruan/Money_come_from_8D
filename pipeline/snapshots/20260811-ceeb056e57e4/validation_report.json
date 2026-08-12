@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-08-11T22:26:49.419883+08:00",
+  "universe_count": 1441,
+  "normalized_file_count": 1441,
+  "total_rows": 1227123,
+  "min_latest_date": "2026-08-11",
+  "max_latest_date": "2026-08-11",
+  "issue_count": 6,
+  "issues": [
+    {
+      "file": "sh510050.csv",
+      "error": "ValueError: contains probable adjustment discontinuity above 50%: ['2005-03-22', '2005-04-04', '2005-04-06']"
+    },
+    {
+      "file": "sh510180.csv",
+      "error": "ValueError: contains probable adjustment discontinuity above 50%: ['2006-08-08']"
+    },
+    {
+      "file": "sh510230.csv",
+      "error": "ValueError: contains probable adjustment discontinuity above 50%: ['2015-01-08', '2015-01-09', '2015-01-15']"
+    },
+    {
+      "file": "sh510880.csv",
+      "error": "ValueError: contains probable adjustment discontinuity above 50%: ['2008-09-19', '2008-09-22', '2008-10-10']"
+    },
+    {
+      "file": "sh512100.csv",
+      "error": "ValueError: contains probable adjustment discontinuity above 50%: ['2022-08-04', '2022-09-05']"
+    },
+    {
+      "file": "sh512930.csv",
+      "error": "ValueError: contains probable adjustment discontinuity above 50%: ['2021-11-09']"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-08-12T23:52:24.6869696+08:00",
+  "validation_scope": {
+    "start_date": "2015-01-01",
+    "end_date": "2026-08-11",
+    "universe": "trainable_universe_2015.csv",
+    "quality_exclusions": "quality_exclusions.csv"
+  },
+  "training_ready": false,
+  "universe_count": 1438,
+  "raw_file_count": 1441,
+  "normalized_file_count": 1441,
+  "total_rows": 1220879,
+  "min_latest_date": "2026-08-11",
+  "max_latest_date": "2026-08-11",
+  "issue_count": 2,
+  "reported_amount_ratio": 0.0,
+  "issues": [
+    {
+      "phase": "coverage",
+      "file": null,
+      "error": "raw file count 1441 != universe 1438"
+    },
+    {
+      "phase": "coverage",
+      "file": null,
+      "error": "normalized file count 1441 != universe 1438"
+    }
+  ]
+}

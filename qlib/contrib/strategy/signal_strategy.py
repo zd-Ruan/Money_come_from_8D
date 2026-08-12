@@ -19,7 +19,6 @@ from qlib.backtest.decision import Order, OrderDir, TradeDecisionWO
 from qlib.log import get_module_logger
 from qlib.utils import get_pre_trading_date, load_dataset
 from qlib.contrib.strategy.order_generator import OrderGenerator, OrderGenWOInteract
-from qlib.contrib.strategy.optimizer import EnhancedIndexingOptimizer
 
 
 class BaseSignalStrategy(BaseStrategy, ABC):
@@ -414,6 +413,11 @@ class EnhancedIndexingStrategy(WeightStrategyBase):
         verbose=False,
         **kwargs,
     ):
+        # CVXPY and its native solver extensions are optional.  Import them only
+        # when enhanced indexing is actually requested so ordinary signal
+        # strategies do not depend on a working optimizer installation.
+        from qlib.contrib.strategy.optimizer import EnhancedIndexingOptimizer
+
         super().__init__(**kwargs)
 
         self.logger = get_module_logger("EnhancedIndexingStrategy")

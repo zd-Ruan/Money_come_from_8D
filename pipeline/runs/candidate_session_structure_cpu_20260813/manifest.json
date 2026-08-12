@@ -1,0 +1,120 @@
+{
+  "schema_version": 2,
+  "run_id": "candidate_session_structure_cpu_20260813",
+  "created_at": "2026-08-13T01:14:13.027791+08:00",
+  "status": "completed",
+  "classification": "research_only",
+  "snapshot_id": "20260811-2a82246e51e9",
+  "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+  "config": "pipeline/configs/candidate_session_structure_cpu_20260813.yaml",
+  "data": {
+    "snapshot_id": "20260811-2a82246e51e9",
+    "source_fingerprint": "2a82246e51e9303b35739a8e7d33f59bdfe884367bf4b6be49d4aac948bea694",
+    "snapshot_manifest": "pipeline/snapshots/20260811-2a82246e51e9/manifest.json",
+    "universe_mode": "current_snapshot"
+  },
+  "code": {
+    "source_tree_sha256": "88921eca2de2affb586ed2d02104ebe2bad0e2d5cf15d9527ec79c350077cf20"
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "qlib": "0.9.7",
+    "lightgbm": "4.7.0",
+    "model_device_type": "cpu"
+  },
+  "git": {
+    "available": true,
+    "commit": "684be5b4133bc793da079cb9225545e955829d0d",
+    "branch": "master",
+    "dirty": true,
+    "status": "M pipeline/registry.json\n M pipeline/src/quant_pipeline/factors.py\n M qlib/contrib/strategy/signal_strategy.py\n?? pipeline/configs/baseline_cpu_20260813.yaml\n?? pipeline/configs/baseline_home_rtx2060_20260811.yaml\n?? pipeline/configs/candidate_price_volume_divergence_cpu_20260813.yaml\n?? pipeline/configs/candidate_session_structure_cpu_20260813.yaml\n?? pipeline/configs/candidate_trend_crowding_cpu_20260813.yaml\n?? pipeline/configs/candidate_volume_impact_cpu_20260813.yaml\n?? pipeline/runs/20260812T235333-etf_alpha158_small_account/\n?? pipeline/runs/20260813T000025-etf_alpha158_small_account/\n?? pipeline/runs/baseline_cpu_20260813/\n?? pipeline/runs/candidate_price_volume_divergence_cpu_20260813/\n?? pipeline/runs/candidate_trend_crowding_cpu_20260813/\n?? pipeline/runs/candidate_volume_impact_cpu_20260813/\n?? pipeline/snapshots/20260811-2a82246e51e9/\n?? pipeline/snapshots/20260811-ceeb056e57e4/"
+  },
+  "artifacts": {
+    "predictions": "predictions.parquet",
+    "signal_metrics": "signal_metrics.parquet",
+    "metrics": "metrics.json",
+    "gates": "gates.json",
+    "report": "report.html",
+    "artifact_checksums": "artifact_checksums.json"
+  },
+  "factor_catalog": {
+    "catalog_version": "orc_ohlcv_v1",
+    "factors": [
+      {
+        "direction": 1,
+        "expression": "(($open/Ref($close,1)-1)+($close/$open-1))*(1+Sign(($open/Ref($close,1)-1)*($close/$open-1)))/2*Abs($open/Ref($close,1)-1)/(Std($close/Ref($close,1)-1,20)+1e-12)",
+        "family": "session_structure",
+        "hypothesis": "An opening gap confirmed by the intraday move is information arrival rather than a temporary ETF premium or discount and should continue in the combined direction.",
+        "lookback": 20,
+        "name": "ORC_GAP_CONFIRMATION_20"
+      },
+      {
+        "direction": 1,
+        "expression": "($close/$open-1)*Abs($open/Ref($close,1)-1)/(Std(Ref($close/Ref($close,1)-1,1),20)+1e-12)",
+        "family": "session_structure",
+        "hypothesis": "The intraday direction after a volatility-scaled opening dislocation reveals which side absorbed the gap and is expected to persist.",
+        "lookback": 21,
+        "name": "ORC_GAP_ABSORPTION_20"
+      },
+      {
+        "direction": -1,
+        "expression": "(($open/Ref($close,1)-1)-($close/$open-1))/(Std($close/Ref($close,1)-1,20)+1e-12)",
+        "family": "session_structure",
+        "hypothesis": "Returns concentrated at the open but not sustained intraday are more consistent with a temporary ETF premium or discount and should fade.",
+        "lookback": 20,
+        "name": "ORC_OVERNIGHT_DOMINANCE_20"
+      },
+      {
+        "direction": 1,
+        "expression": "(2*$close-$high-$low)/($high-$low+1e-12)*($volume/(Mean(Ref($volume,1),20)+1e-12)-1)",
+        "family": "session_structure",
+        "hypothesis": "An edge-of-range close backed by unusual volume proxies late-session pressure that carries into the next decision period.",
+        "lookback": 20,
+        "name": "ORC_CLOSE_PRESSURE_VOLUME_20"
+      },
+      {
+        "direction": 1,
+        "expression": "Mean(($close-$open)/$open,10)/(Std(($close-$open)/$open,20)+1e-12)",
+        "family": "session_structure",
+        "hypothesis": "A stable positive intraday drift relative to the volatility of its own recent open-to-close moves reflects persistent session-level buying pressure.",
+        "lookback": 20,
+        "name": "ORC_INTRADAY_RANGE_RETURN_10"
+      }
+    ],
+    "families": [
+      "session_structure"
+    ],
+    "protocol": {
+      "catalog_version": "orc_ohlcv_v1",
+      "discovery_scope": "purged rolling train and validation folds only",
+      "locked_holdout_policy": "Do not inspect or tune on the final chronological holdout until families, candidates, model, and strategy parameters are frozen; evaluate that holdout once.",
+      "multiplicity_control": "Benjamini-Hochberg false-discovery rate at q=0.10 within the frozen catalog",
+      "primary_metric": "mean validation daily rank IC in the declared direction",
+      "protocol_version": "purged_family_ablation_v1",
+      "required_robustness_checks": [
+        "same sign in a majority of validation folds",
+        "incremental result versus the unchanged Alpha158 baseline",
+        "positive net excess at the configured 10 bps slippage stress",
+        "no material concentration in one instrument or one fold",
+        "research-only classification while the ETF universe is not point-in-time"
+      ],
+      "stage_order": [
+        "family_ablation",
+        "candidate_confirmation",
+        "locked_holdout"
+      ]
+    },
+    "sha256": "059dac1635f1935bd9766e31f41e304e622adbfdfbd5e89417f349100747dabb"
+  },
+  "integrity": {
+    "checksum_manifest": "artifact_checksums.json",
+    "checksum_sha256": "502e42eb28c28904103e53e21939ac62208515c8f5af3cb56cf09dcb9bd9f01e",
+    "artifact_count": 114,
+    "verified": true
+  },
+  "completed_at": "2026-08-13T01:18:47.604425+08:00",
+  "registry": {
+    "updated": true
+  }
+}

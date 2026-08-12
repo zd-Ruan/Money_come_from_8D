@@ -1,6 +1,108 @@
 {
-  "updated_at": "2026-08-12T17:01:24.979238+08:00",
+  "updated_at": "2026-08-13T01:18:47.606425+08:00",
   "runs": [
+    {
+      "run_id": "candidate_session_structure_cpu_20260813",
+      "created_at": "2026-08-13T01:14:13.027791+08:00",
+      "completed_at": "2026-08-13T01:18:47.604425+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/candidate_session_structure_cpu_20260813",
+      "snapshot_id": "20260811-2a82246e51e9",
+      "metrics": {
+        "net_cumulative_return": 0.7879143288961781,
+        "benchmark_cumulative_return": 0.2925093173980713,
+        "ic": 0.009052095943708588,
+        "rank_ic": 0.014399942583966046,
+        "max_drawdown": -0.2558575344563352,
+        "relative_wealth_max_drawdown": -0.21120704697525572
+      }
+    },
+    {
+      "run_id": "candidate_price_volume_divergence_cpu_20260813",
+      "created_at": "2026-08-13T01:09:33.711695+08:00",
+      "completed_at": "2026-08-13T01:14:05.724711+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/candidate_price_volume_divergence_cpu_20260813",
+      "snapshot_id": "20260811-2a82246e51e9",
+      "metrics": {
+        "net_cumulative_return": 0.7068932794364253,
+        "benchmark_cumulative_return": 0.2925093173980713,
+        "ic": 0.012554557767451088,
+        "rank_ic": 0.02039394463478721,
+        "max_drawdown": -0.18924502973411284,
+        "relative_wealth_max_drawdown": -0.1490070754530387
+      }
+    },
+    {
+      "run_id": "candidate_volume_impact_cpu_20260813",
+      "created_at": "2026-08-13T01:04:52.922475+08:00",
+      "completed_at": "2026-08-13T01:09:25.257733+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/candidate_volume_impact_cpu_20260813",
+      "snapshot_id": "20260811-2a82246e51e9",
+      "metrics": {
+        "net_cumulative_return": 0.4924831263478704,
+        "benchmark_cumulative_return": 0.2925093173980713,
+        "ic": 0.008846951104011085,
+        "rank_ic": 0.014604795982900915,
+        "max_drawdown": -0.2858244170466421,
+        "relative_wealth_max_drawdown": -0.23759237412076462
+      }
+    },
+    {
+      "run_id": "candidate_trend_crowding_cpu_20260813",
+      "created_at": "2026-08-13T01:00:07.793454+08:00",
+      "completed_at": "2026-08-13T01:04:44.938900+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/candidate_trend_crowding_cpu_20260813",
+      "snapshot_id": "20260811-2a82246e51e9",
+      "metrics": {
+        "net_cumulative_return": 0.5297466090279068,
+        "benchmark_cumulative_return": 0.2925093173980713,
+        "ic": 0.008311094012204428,
+        "rank_ic": 0.013912415002918505,
+        "max_drawdown": -0.19371719807765608,
+        "relative_wealth_max_drawdown": -0.18503184436280284
+      }
+    },
+    {
+      "run_id": "baseline_cpu_20260813",
+      "created_at": "2026-08-13T00:55:19.321601+08:00",
+      "completed_at": "2026-08-13T00:59:57.225008+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/baseline_cpu_20260813",
+      "snapshot_id": "20260811-2a82246e51e9",
+      "metrics": {
+        "net_cumulative_return": 0.7707865514858891,
+        "benchmark_cumulative_return": 0.2925093173980713,
+        "ic": 0.010373086845029668,
+        "rank_ic": 0.01573153291445781,
+        "max_drawdown": -0.18478232863918764,
+        "relative_wealth_max_drawdown": -0.18395987903304045
+      }
+    },
+    {
+      "run_id": "20260813T000025-etf_alpha158_small_account",
+      "created_at": "2026-08-13T00:00:25.171104+08:00",
+      "completed_at": "2026-08-13T00:05:45.858551+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/20260813T000025-etf_alpha158_small_account",
+      "snapshot_id": "20260811-2a82246e51e9",
+      "metrics": {
+        "net_cumulative_return": 0.3448018251089946,
+        "benchmark_cumulative_return": 0.292509504537533,
+        "ic": 0.003855113635577721,
+        "rank_ic": 0.013725133457489923,
+        "max_drawdown": -0.26879289133278617,
+        "relative_wealth_max_drawdown": -0.26203101150184605
+      }
+    },
     {
       "run_id": "20260812T165254-etf_alpha158_rolling",
       "created_at": "2026-08-12T16:52:54.948354+08:00",

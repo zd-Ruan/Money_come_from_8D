@@ -1,0 +1,71 @@
+{
+  "fold": 2,
+  "train_start": "2015-01-05",
+  "train_end": "2024-09-20",
+  "valid_start": "2024-09-25",
+  "valid_end": "2025-04-07",
+  "test_start": "2025-04-10",
+  "test_end": "2025-07-11",
+  "purge_bars": 2,
+  "rows": {
+    "train": 341274,
+    "valid": 62252,
+    "test_features": 32430,
+    "test_labels": 32430
+  },
+  "instruments": {
+    "train": 820,
+    "valid": 710,
+    "test": 664
+  },
+  "best_iterations": [
+    10,
+    27,
+    18
+  ],
+  "device_type": "cpu",
+  "ic": 0.005995686299880132,
+  "rank_ic": 0.017059271304851166,
+  "prediction_seed_std_mean": 0.004701155512516707,
+  "effective_test_end": "2025-07-11",
+  "portfolio": {
+    "days": 63,
+    "net_cumulative_return": 0.12217812613481627,
+    "benchmark_cumulative_return": 0.08983218669891357,
+    "excess_cumulative_return": 0.029679743203288922,
+    "initial_execution_date": "2025-04-11",
+    "evaluation_start_date": "2025-04-14",
+    "evaluation_end_date": "2025-07-15",
+    "alignment_method": "initial_cost_compounded_into_first_realized_return",
+    "reset_cash": true,
+    "start": "2025-04-11",
+    "end": "2025-07-15",
+    "complete_for_gate": true,
+    "execution": {
+      "order_count": 67,
+      "filled_order_count": 67,
+      "partial_fill_order_count": 0,
+      "zero_fill_order_count": 0,
+      "zero_fill_order_rate": 0.0,
+      "target_amount": 204683.3419928067,
+      "fill_amount": 204683.3419928067,
+      "amount_fill_rate": 1.0,
+      "target_notional": 227991.6649612107,
+      "priced_target_notional": 227991.6649612107,
+      "unpriced_target_order_count": 0,
+      "fill_notional": 227991.6649612107,
+      "notional_fill_rate": 1.0,
+      "fill_rate": 1.0,
+      "commission_total": 335.0,
+      "commission_mean_per_filled_order": 5.0,
+      "commission_effective_bps": 14.693519609894295,
+      "minimum_commission_order_count": 67,
+      "minimum_commission_order_rate": 1.0,
+      "slippage_total": 113.99583248060536,
+      "slippage_mean_per_filled_order": 1.7014303355314233,
+      "slippage_effective_bps": 5.0,
+      "total_cost": 448.9958324806054,
+      "total_cost_effective_bps": 19.6935196098943
+    }
+  }
+}
