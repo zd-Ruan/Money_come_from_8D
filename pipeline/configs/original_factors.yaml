@@ -1,6 +1,6 @@
 project:
   name: etf_alpha158_original_factors_small_account
-  description: Frozen Alpha158 plus original OHLCV candidates for a CNY 20,000 research account
+  description: Frozen Alpha158 plus original-research OHLCV candidates for a CNY 20,000 research account
   random_seeds: [20260812, 20260813, 20260814]
 
 features:
@@ -8,9 +8,9 @@ features:
   families: [trend_crowding, volume_impact, compression_release, price_volume_divergence, session_structure]
 
 paths:
-  qlib_provider: data/cn_etf/qlib_data
+  qlib_provider: data/cn_etf/qlib_data_20260812
   universe: data/cn_etf/universe.csv
-  instruments: data/cn_etf/qlib_data/instruments/t1_etf.txt
+  instruments: data/cn_etf/qlib_data_20260812/instruments/t1_etf.txt
   validation_report: data/cn_etf/validation_report.json
   runs: pipeline/runs
   snapshots: pipeline/snapshots
@@ -21,7 +21,7 @@ data:
   market: t1_etf
   benchmark: SH510300
   start_date: 2015-01-01
-  end_date: 2026-08-10
+  end_date: 2026-08-12
   test_start_date: 2025-01-01
   label: Ref($close, -2) / Ref($close, -1) - 1
   label_horizon_bars: 2
@@ -48,7 +48,7 @@ model:
   lambda_l2: 20.0
   num_boost_round: 500
   early_stopping_rounds: 50
-  num_threads: 24
+  num_threads: 10
   device_type: gpu
   gpu_platform_id: 0
   gpu_device_id: 0
@@ -70,7 +70,10 @@ execution:
   min_cost: 5
   trade_unit: 100
   stamp_tax_bps: 0
-  limit_threshold: 0.10
+  price_limit_mode: ohlc_proven_tier_conservative
+  standard_limit_ratio: 0.10
+  wide_limit_ratio: 0.20
+  price_tick: 0.001
   max_daily_volume_participation: 0.05
   stress_slippage_bps_per_side: [0, 5, 10, 15, 20, 30]
 
@@ -84,8 +87,12 @@ gates:
   min_hac_t_stat: 1.96
   min_rank_ic_hac_t_stat: 1.96
   max_strategy_drawdown: 0.25
+  research_fold_days: 21
+  min_research_fold_win_ratio: 0.60
+  max_single_etf_abs_contribution_share: 0.35
+  max_single_fold_abs_incremental_pnl_share: 0.50
   required_stress_slippage_bps: 10
   require_historical_point_in_time_universe_for_promotion: true
 
 report:
-  title: ETF Alpha158 + 原创因子小账户滚动研究
+  title: ETF Alpha158 + 原创研究候选小账户滚动研究

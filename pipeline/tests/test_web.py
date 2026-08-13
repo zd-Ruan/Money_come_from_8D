@@ -9,6 +9,12 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from quant_pipeline.integrity import (
+    generate_artifact_checksums,
+    generate_integrity_seal,
+    verify_artifact_checksums,
+)
+from quant_pipeline.io import sha256_file
 from quant_pipeline.web import create_app
 
 
@@ -17,10 +23,18 @@ class WebApiTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.pipeline_root = Path(self.temp_dir.name)
         runs_dir = self.pipeline_root / "runs"
+        self.baseline_dir = runs_dir / "baseline-run"
         self.completed_dir = runs_dir / "completed-run"
         self.failed_dir = runs_dir / "failed-run"
+        self.legacy_dir = runs_dir / "legacy-large-account"
+        self.unverified_dir = runs_dir / "unverified-run"
+        self.corrupt_dir = runs_dir / "corrupt-run"
+        self.baseline_dir.mkdir(parents=True)
         self.completed_dir.mkdir(parents=True)
         self.failed_dir.mkdir()
+        self.legacy_dir.mkdir()
+        self.unverified_dir.mkdir()
+        self.corrupt_dir.mkdir()
 
         registry = {
             "updated_at": "2026-08-12T16:00:00+08:00",
@@ -56,6 +70,33 @@ class WebApiTests(unittest.TestCase):
                     "error": f"failed under {self.pipeline_root.resolve()}",
                     "traceback": "Traceback: private",
                 },
+                {
+                    "run_id": "legacy-large-account",
+                    "created_at": "2026-08-12T13:00:00+08:00",
+                    "completed_at": "2026-08-12T13:30:00+08:00",
+                    "status": "completed",
+                    "classification": "research_only",
+                    "snapshot_id": "legacy-snapshot",
+                    "metrics": {"net_cumulative_return": 9.9},
+                },
+                {
+                    "run_id": "unverified-run",
+                    "created_at": "2026-08-12T12:00:00+08:00",
+                    "completed_at": "2026-08-12T12:30:00+08:00",
+                    "status": "completed",
+                    "classification": "candidate",
+                    "snapshot_id": "unverified-snapshot",
+                    "metrics": {"net_cumulative_return": 8.8},
+                },
+                {
+                    "run_id": "corrupt-run",
+                    "created_at": "2026-08-12T11:00:00+08:00",
+                    "completed_at": "2026-08-12T11:30:00+08:00",
+                    "status": "completed",
+                    "classification": "candidate",
+                    "snapshot_id": "corrupt-snapshot",
+                    "metrics": {"net_cumulative_return": 7.7},
+                },
             ],
         }
         self._write_json(self.pipeline_root / "registry.json", registry)
@@ -66,6 +107,7 @@ class WebApiTests(unittest.TestCase):
                 "created_at": "2026-08-12T15:00:00+08:00",
                 "completed_at": "2026-08-12T16:00:00+08:00",
                 "status": "completed",
+                "integrity": {"verified": True},
                 "classification": "research_only",
                 "snapshot_id": "snapshot-1",
                 "snapshot_manifest": str(self.pipeline_root / "snapshots" / "manifest.json"),
@@ -98,6 +140,48 @@ class WebApiTests(unittest.TestCase):
                 },
             },
         )
+        self._write_json(
+            self.completed_dir / "config.json",
+            {"execution": {"account": 20_000}},
+        )
+        self._write_json(
+            self.baseline_dir / "manifest.json",
+            {
+                "run_id": "baseline-run",
+                "status": "completed",
+                "integrity": {"verified": True},
+            },
+        )
+        self._write_json(
+            self.baseline_dir / "config.json",
+            {"execution": {"account": 20_000}},
+        )
+        self._write_json(
+            self.legacy_dir / "manifest.json",
+            {
+                "run_id": "legacy-large-account",
+                "status": "completed",
+                "integrity": {"verified": True},
+            },
+        )
+        self._write_json(
+            self.legacy_dir / "config.json",
+            {"execution": {"account": 10_000_000}},
+        )
+        self._write_json(
+            self.unverified_dir / "manifest.json",
+            {
+                "run_id": "unverified-run",
+                "status": "completed",
+                "integrity": {"verified": False},
+            },
+        )
+        self._write_json(
+            self.unverified_dir / "config.json",
+            {"execution": {"account": 20_000}},
+        )
+        (self.corrupt_dir / "manifest.json").write_text("{", encoding="utf-8")
+        (self.corrupt_dir / "config.json").write_text("not-json", encoding="utf-8")
         self._write_json(
             self.completed_dir / "metrics.json",
             {
@@ -238,6 +322,8 @@ class WebApiTests(unittest.TestCase):
                 "secret": "comparison-secret",
             },
         )
+        self._seal_run(self.baseline_dir)
+        self._seal_run(self.completed_dir)
         self.client = TestClient(create_app(self.pipeline_root))
 
     def tearDown(self):
@@ -249,10 +335,34 @@ class WebApiTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value), encoding="utf-8")
 
+    def _seal_run(self, run_dir):
+        manifest_path = run_dir / "manifest.json"
+        checksum_path = generate_artifact_checksums(run_dir)
+        verification = verify_artifact_checksums(run_dir, require_seal=False)
+        self.assertTrue(verification["valid"])
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest.setdefault("artifacts", {}).update(
+            {
+                "artifact_checksums": checksum_path.name,
+                "integrity_seal": "integrity_seal.json",
+            }
+        )
+        manifest["integrity"] = {
+            "checksum_manifest": checksum_path.name,
+            "checksum_sha256": sha256_file(checksum_path),
+            "artifact_count": verification["expected_count"],
+            "seal_manifest": "integrity_seal.json",
+            "verified": True,
+        }
+        self._write_json(manifest_path, manifest)
+        generate_integrity_seal(run_dir, checksum_path)
+        self.assertTrue(verify_artifact_checksums(run_dir)["valid"])
+
     def test_runs_api_uses_public_allowlist(self):
         response = self.client.get("/api/runs")
         self.assertEqual(response.status_code, 200)
         runs = response.json()["runs"]
+        self.assertEqual([run["run_id"] for run in runs], ["completed-run"])
         completed = runs[0]
         self.assertEqual(
             set(completed),
@@ -317,20 +427,52 @@ class WebApiTests(unittest.TestCase):
         self.assertNotIn("private-file.py", serialized)
         self.assertNotIn("secret", serialized)
 
-    def test_dashboard_translates_states_and_only_links_completed_runs(self):
+    def test_dashboard_only_displays_trusted_completed_runs(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         page = response.text
         self.assertIn("<span class='badge research_only'>仅限研究</span>", page)
-        self.assertIn("<span class='badge invalid'>无效</span>", page)
         self.assertIn("<td>已完成</td>", page)
-        self.assertIn("<td>失败</td>", page)
         self.assertIn("href='/runs/completed-run'", page)
         self.assertIn(f"href='/comparisons/{self.comparison_id}'", page)
         self.assertIn("比较审计 · 未证明改进", page)
         self.assertNotIn("href='/runs/failed-run'", page)
+        self.assertNotIn("failed-run", page)
+        self.assertNotIn("legacy-large-account", page)
+        self.assertNotIn("unverified-run", page)
+        self.assertNotIn("corrupt-run", page)
         self.assertNotIn(">research_only</span>", page)
         self.assertNotIn(">completed</td>", page)
+
+    def test_untrusted_and_corrupt_runs_are_rejected_without_server_errors(self):
+        listing = self.client.get("/api/runs")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual([run["run_id"] for run in listing.json()["runs"]], ["completed-run"])
+
+        dashboard = self.client.get("/")
+        self.assertEqual(dashboard.status_code, 200)
+        for run_id in ("failed-run", "legacy-large-account", "unverified-run", "corrupt-run"):
+            self.assertNotIn(run_id, dashboard.text)
+            self.assertEqual(self.client.get(f"/api/runs/{run_id}").status_code, 404)
+            self.assertEqual(self.client.get(f"/runs/{run_id}").status_code, 404)
+
+    def test_tampered_artifact_is_hidden_and_direct_access_is_rejected(self):
+        (self.completed_dir / "gates.json").write_text(
+            '{"status":"candidate","tampered":true}', encoding="utf-8"
+        )
+
+        listing = self.client.get("/api/runs")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.json()["runs"], [])
+        dashboard = self.client.get("/")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotIn("completed-run", dashboard.text)
+        self.assertEqual(self.client.get("/api/runs/completed-run").status_code, 404)
+        self.assertEqual(self.client.get("/runs/completed-run").status_code, 404)
+        self.assertEqual(
+            self.client.get(f"/api/comparisons/{self.comparison_id}").status_code,
+            404,
+        )
 
     def test_comparison_api_uses_nested_allowlist(self):
         response = self.client.get(f"/api/comparisons/{self.comparison_id}")
@@ -371,7 +513,7 @@ class WebApiTests(unittest.TestCase):
             "未满足改进条件：日策略收益差通过 HAC 显著性门槛",
             "逐折相对财富",
             "候选胜",
-            "冻结原创因子目录",
+            "冻结原创研究候选目录",
             "ORC_TREND_PATH_CROWD_20",
             "趋势过度拥挤后更可能回撤。",
         ):
@@ -421,6 +563,7 @@ class WebApiTests(unittest.TestCase):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["config"] = "configs/baseline.yaml"
         self._write_json(manifest_path, manifest)
+        generate_integrity_seal(self.completed_dir)
         response = self.client.get("/runs/completed-run")
         self.assertEqual(response.status_code, 200)
         self.assertIn("<html>report at 对应运行目录</html>", response.text)

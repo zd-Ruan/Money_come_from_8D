@@ -11,13 +11,17 @@ trading rules.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import math
+import os
 import random
 import shutil
 import subprocess
 import sys
+import tempfile
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -80,10 +84,25 @@ QLIB_FIELDS = [
     "change",
     "amount",
     "vwap",
-    "turnover_rate",
     "amount_estimated",
     "paused",
 ]
+CORPORATE_ACTION_COLUMNS = [
+    "symbol",
+    "record_date",
+    "ex_date",
+    "cash_payment_date",
+    "cash_dividend_per_old_share",
+    "share_ratio",
+    "fractional_share_treatment",
+    "source_url",
+    "source_sha256",
+]
+NO_SHARE_CHANGE_TREATMENT = "not_applicable_no_share_change"
+EASTMONEY_UNKNOWN_FRACTIONAL_TREATMENT = "unknown_not_provided_by_eastmoney_archive"
+DEFAULT_ACTION_REQUEST_DELAY_SECONDS = 0.25
+DEFAULT_ACTION_ATTEMPTS = 5
+ACTION_RETRY_STATUS_CODES = frozenset({429, 514, *range(500, 600)})
 
 
 @dataclass(frozen=True)
@@ -104,15 +123,19 @@ def configure_logging(verbose: bool = False) -> None:
     )
 
 
-def make_session(insecure: bool = False) -> requests.Session:
-    retry = Retry(
-        total=4,
-        connect=4,
-        read=4,
-        backoff_factor=0.7,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=("GET",),
-    )
+def make_session(insecure: bool = False, automatic_retries: bool = True) -> requests.Session:
+    if automatic_retries:
+        retry = Retry(
+            total=4,
+            connect=4,
+            read=4,
+            backoff_factor=0.7,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=("GET",),
+        )
+    else:
+        # Corporate-action requests implement visible, auditable retries below.
+        retry = Retry(total=0, connect=0, read=0, redirect=0, status=0)
     session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=retry, pool_connections=8, pool_maxsize=8))
     session.mount("http://", HTTPAdapter(max_retries=retry, pool_connections=8, pool_maxsize=8))
@@ -146,12 +169,19 @@ def _request_json(session: requests.Session, urls: Iterable[str], params: dict, 
 
 
 def latest_complete_date(now: datetime | None = None) -> date:
-    """Exclude today's bar until a conservative 16:00 Asia/Shanghai cutoff."""
+    """Exclude today's bar until a conservative 16:00 Asia/Shanghai cutoff.
+
+    Weekend rollback ensures an in-session Monday run never selects Sunday as
+    the completed data end date.
+    """
     shanghai = ZoneInfo("Asia/Shanghai")
     current = now.astimezone(shanghai) if now is not None else datetime.now(shanghai)
+    candidate = current.date()
     if current.time() < datetime_time(16, 0):
-        return current.date() - timedelta(days=1)
-    return current.date()
+        candidate -= timedelta(days=1)
+    while candidate.weekday() >= 5:
+        candidate -= timedelta(days=1)
+    return candidate
 
 
 def market_prefix(code: str, market_id: int | str | None = None) -> str:
@@ -218,17 +248,41 @@ def fetch_etf_snapshot(session: requests.Session, page_size: int = 100) -> list[
     return rows
 
 
-def build_t1_universe(session: requests.Session, snapshot_date: date) -> pd.DataFrame:
+def build_t1_universe(session: requests.Session, snapshot_date: date) -> tuple[pd.DataFrame, list[dict]]:
+    """Build the T+1 ETF universe and return (universe, dropped_records).
+
+    Dropped records are reported instead of silently shrinking the universe so
+    an in-session snapshot missing quotes can never quietly change the pool.
+    """
     fund_master = fetch_fund_master(session)
     spot_rows = fetch_etf_snapshot(session)
     records = []
+    dropped: list[dict] = []
     for row in spot_rows:
         code = str(row.get("f12", "")).zfill(6)
         master = fund_master.get(code)
-        if not master or master["fund_type"] != T1_FUND_TYPE:
+        if not master:
+            dropped.append({"code": code, "reason": "missing_fund_master"})
+            continue
+        if master["fund_type"] != T1_FUND_TYPE:
+            dropped.append(
+                {
+                    "code": code,
+                    "name": str(master["fund_name"]),
+                    "fund_type": str(master["fund_type"]),
+                    "reason": "excluded_non_t1_fund_type",
+                }
+            )
             continue
         last_price = pd.to_numeric(row.get("f2"), errors="coerce")
         if pd.isna(last_price) or float(last_price) <= 0:
+            dropped.append(
+                {
+                    "code": code,
+                    "name": str(master["fund_name"]),
+                    "reason": "missing_or_nonpositive_last_price",
+                }
+            )
             continue
         prefix = market_prefix(code, row.get("f13"))
         update_value = pd.to_numeric(row.get("f124"), errors="coerce")
@@ -256,7 +310,7 @@ def build_t1_universe(session: requests.Session, snapshot_date: date) -> pd.Data
     universe = pd.DataFrame(records).sort_values("symbol").reset_index(drop=True)
     if universe.empty:
         raise RuntimeError("T+1 ETF universe is empty")
-    return universe
+    return universe, dropped
 
 
 def _parse_kline(payload: dict, symbol: str, adjusted: bool) -> pd.DataFrame:
@@ -391,6 +445,417 @@ def fetch_sina_factors(session: requests.Session, symbol: str) -> pd.DataFrame:
     return _parse_sina_factor_payload(response.text)
 
 
+def _fund_archive_code(symbol: str) -> str:
+    code = str(symbol).upper()
+    if len(code) != 8 or code[:2] not in {"SH", "SZ"} or not code[2:].isdigit():
+        raise ValueError(f"invalid mainland ETF symbol: {symbol!r}")
+    return code[2:]
+
+
+def _eastmoney_corporate_action_url(symbol: str) -> str:
+    return f"https://fundf10.eastmoney.com/fhsp_{_fund_archive_code(symbol)}.html"
+
+
+def _parse_eastmoney_corporate_actions(html_text: str, symbol: str, source_url: str) -> pd.DataFrame:
+    """Parse dated cash distributions and share conversions from a fund archive page."""
+    from bs4 import BeautifulSoup
+
+    import re
+
+    records: dict[str, dict] = {}
+    soup = BeautifulSoup(html_text, "html.parser")
+    recognized_archive_tables = 0
+    for table in soup.find_all("table"):
+        headers = [cell.get_text(" ", strip=True) for cell in table.find_all("th")]
+        if "除息日" in headers and "分红发放日" in headers:
+            recognized_archive_tables += 1
+            for row in table.find_all("tr"):
+                cells = [cell.get_text(" ", strip=True) for cell in row.find_all("td")]
+                if len(cells) < 5:
+                    continue
+                amount = re.search(
+                    r"每\s*10\s*份(?:基金份额)?\s*(?:派(?:发)?(?:现金|红利)|分配收益)\s*([0-9.]+)\s*元",
+                    cells[3],
+                )
+                per_share_denominator = 10.0
+                if amount is None:
+                    amount = re.search(
+                        r"每\s*份\s*(?:派(?:发)?(?:现金|红利)|分配收益)\s*([0-9.]+)\s*元",
+                        cells[3],
+                    )
+                    per_share_denominator = 1.0
+                if amount is None:
+                    raise ValueError(f"unsupported cash distribution text for {symbol}: {cells[3]!r}")
+                ex_date = pd.Timestamp(cells[2]).date().isoformat()
+                records.setdefault(ex_date, {}).update(
+                    {
+                        "symbol": symbol.upper(),
+                        "record_date": pd.Timestamp(cells[1]).date().isoformat(),
+                        "ex_date": ex_date,
+                        "cash_payment_date": pd.Timestamp(cells[4]).date().isoformat(),
+                        "cash_dividend_per_old_share": float(amount.group(1)) / per_share_denominator,
+                    }
+                )
+        if "拆分折算日" in headers and "拆分折算比例" in headers:
+            recognized_archive_tables += 1
+            for row in table.find_all("tr"):
+                cells = [cell.get_text(" ", strip=True) for cell in row.find_all("td")]
+                if len(cells) < 4:
+                    continue
+                ratio = re.fullmatch(r"\s*([0-9.]+)\s*:\s*([0-9.]+)\s*", cells[3])
+                if ratio is None:
+                    ratio = re.fullmatch(
+                        r"\s*每\s*([0-9.]+)\s*份\s*(?:基金份额)?折算为\s*([0-9.]+)\s*份\s*",
+                        cells[3],
+                    )
+                if ratio is None or float(ratio.group(1)) <= 0 or float(ratio.group(2)) <= 0:
+                    raise ValueError(f"unsupported share conversion text for {symbol}: {cells[3]!r}")
+                ex_date = pd.Timestamp(cells[1]).date().isoformat()
+                records.setdefault(ex_date, {}).update(
+                    {
+                        "symbol": symbol.upper(),
+                        "ex_date": ex_date,
+                        "share_ratio": float(ratio.group(2)) / float(ratio.group(1)),
+                    }
+                )
+
+    if recognized_archive_tables == 0:
+        raise ValueError(
+            f"response for {symbol} is not a recognizable Eastmoney distribution archive"
+        )
+
+    source_hash = hashlib.sha256(html_text.encode("utf-8")).hexdigest()
+    rows = []
+    for ex_date, record in sorted(records.items()):
+        rows.append(
+            {
+                "symbol": record["symbol"],
+                "record_date": record.get("record_date"),
+                "ex_date": ex_date,
+                "cash_payment_date": record.get("cash_payment_date"),
+                "cash_dividend_per_old_share": float(record.get("cash_dividend_per_old_share", 0.0)),
+                "share_ratio": float(record.get("share_ratio", 1.0)),
+                "fractional_share_treatment": (
+                    EASTMONEY_UNKNOWN_FRACTIONAL_TREATMENT
+                    if not math.isclose(float(record.get("share_ratio", 1.0)), 1.0, rel_tol=0.0, abs_tol=1e-12)
+                    else NO_SHARE_CHANGE_TREATMENT
+                ),
+                "source_url": source_url,
+                "source_sha256": source_hash,
+            }
+        )
+    return pd.DataFrame(rows, columns=CORPORATE_ACTION_COLUMNS)
+
+
+def _text_sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+class _RequestPacer:
+    """Serialize request starts across workers without holding up parsing."""
+
+    def __init__(self, interval_seconds: float):
+        self._interval_seconds = interval_seconds
+        self._next_request_at = 0.0
+        self._lock = threading.Lock()
+
+    def wait(self) -> None:
+        with self._lock:
+            now = time.monotonic()
+            remaining = self._next_request_at - now
+            if remaining > 0:
+                time.sleep(remaining)
+            self._next_request_at = time.monotonic() + self._interval_seconds
+
+
+class _CorporateActionRequestError(RuntimeError):
+    def __init__(self, message: str, attempts: int):
+        super().__init__(message)
+        self.attempts = attempts
+
+
+def _download_eastmoney_corporate_action_html(
+    session: requests.Session,
+    symbol: str,
+    *,
+    attempts: int = DEFAULT_ACTION_ATTEMPTS,
+    request_delay_seconds: float = DEFAULT_ACTION_REQUEST_DELAY_SECONDS,
+    request_pacer: _RequestPacer | None = None,
+) -> tuple[str, int]:
+    """Download one archive page with explicit throttling and retry behavior."""
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+    if request_delay_seconds < 0:
+        raise ValueError("request_delay_seconds must be non-negative")
+
+    url = _eastmoney_corporate_action_url(symbol)
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        if request_pacer is not None:
+            request_pacer.wait()
+        try:
+            response = session.get(url, headers={"Referer": "https://fundf10.eastmoney.com/"}, timeout=30)
+        except requests.RequestException as exc:
+            last_error = exc
+        else:
+            status_code = int(getattr(response, "status_code", 200))
+            if status_code in ACTION_RETRY_STATUS_CODES:
+                last_error = requests.HTTPError(f"HTTP {status_code} for {url}", response=response)
+            else:
+                # Non-transient 4xx responses fail immediately instead of wasting attempts.
+                try:
+                    response.raise_for_status()
+                except requests.RequestException as exc:
+                    raise _CorporateActionRequestError(
+                        f"non-retryable corporate-action response for {symbol}: {exc}", attempt
+                    ) from exc
+                html_text = response.text
+                if html_text and html_text.strip():
+                    return html_text, attempt
+                last_error = ValueError(f"empty corporate-action page for {symbol}")
+
+        if attempt == attempts:
+            break
+        base_delay = max(DEFAULT_ACTION_REQUEST_DELAY_SECONDS, request_delay_seconds)
+        exponential_delay = min(30.0, base_delay * (2 ** (attempt - 1)))
+        jitter = random.uniform(0.0, min(1.0, exponential_delay * 0.25))
+        retry_delay = exponential_delay + jitter
+        LOGGER.warning(
+            "%s corporate-action request attempt %d/%d failed (%s); retrying in %.2fs",
+            symbol,
+            attempt,
+            attempts,
+            last_error,
+            retry_delay,
+        )
+        time.sleep(retry_delay)
+
+    raise _CorporateActionRequestError(
+        f"corporate-action request failed for {symbol} after {attempts} attempt(s): {last_error}", attempts
+    ) from last_error
+
+
+def fetch_eastmoney_corporate_actions(
+    session: requests.Session,
+    symbol: str,
+    attempts: int = DEFAULT_ACTION_ATTEMPTS,
+    request_delay_seconds: float = DEFAULT_ACTION_REQUEST_DELAY_SECONDS,
+) -> pd.DataFrame:
+    """Fetch and parse one fund page; retained as the public single-symbol API."""
+    html_text, _ = _download_eastmoney_corporate_action_html(
+        session,
+        symbol,
+        attempts=attempts,
+        request_delay_seconds=request_delay_seconds,
+    )
+    return _parse_eastmoney_corporate_actions(html_text, symbol, _eastmoney_corporate_action_url(symbol))
+
+
+def _atomic_text(text: str, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="",
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=path.parent,
+            delete=False,
+        ) as handle:
+            temp_name = handle.name
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        Path(temp_name).replace(path)
+    finally:
+        if temp_name is not None:
+            Path(temp_name).unlink(missing_ok=True)
+
+
+def _resolve_corporate_action_symbols(
+    universe_symbols: Iterable[str],
+    symbols: Iterable[str] | str | None = None,
+    symbols_file: Path | str | None = None,
+) -> tuple[list[str], list[str]]:
+    all_symbols = sorted({str(symbol).strip().upper() for symbol in universe_symbols if str(symbol).strip()})
+    for symbol in all_symbols:
+        _fund_archive_code(symbol)
+
+    requested: list[str] = []
+    if symbols is not None:
+        requested.extend([symbols] if isinstance(symbols, str) else symbols)
+    if symbols_file is not None:
+        path = Path(symbols_file)
+        for line in path.read_text(encoding="utf-8-sig").splitlines():
+            value = line.split("#", 1)[0].strip()
+            if value:
+                requested.append(value)
+    if symbols is None and symbols_file is None:
+        return all_symbols, all_symbols
+
+    selected = sorted({str(symbol).strip().upper() for symbol in requested if str(symbol).strip()})
+    if not selected:
+        raise ValueError("the requested corporate-action symbol scope is empty")
+    for symbol in selected:
+        _fund_archive_code(symbol)
+    missing = sorted(set(selected) - set(all_symbols))
+    if missing:
+        raise ValueError(f"symbols are not in the current T+1 ETF universe: {missing}")
+    return all_symbols, selected
+
+
+def collect_corporate_actions(
+    data_dir: Path,
+    workers: int = 4,
+    insecure: bool = False,
+    symbols: Iterable[str] | str | None = None,
+    symbols_file: Path | str | None = None,
+    cache_dir: Path | str | None = None,
+    refresh: bool = False,
+    request_delay_seconds: float = DEFAULT_ACTION_REQUEST_DELAY_SECONDS,
+    attempts: int = DEFAULT_ACTION_ATTEMPTS,
+) -> pd.DataFrame:
+    """Collect company actions, publishing only a complete-universe successful run."""
+    data_dir = Path(data_dir)
+    if workers < 1:
+        raise ValueError("workers must be at least 1")
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+    if request_delay_seconds < 0:
+        raise ValueError("request_delay_seconds must be non-negative")
+
+    universe = pd.read_csv(data_dir / "universe.csv", dtype={"code": str})
+    if "symbol" not in universe:
+        raise ValueError("universe.csv lacks the symbol column")
+    all_symbols, target_symbols = _resolve_corporate_action_symbols(
+        universe["symbol"].dropna(), symbols, symbols_file
+    )
+    cache_root = Path(cache_dir) if cache_dir is not None else data_dir / "corporate_action_cache"
+    cache_root.mkdir(parents=True, exist_ok=True)
+    request_pacer = _RequestPacer(request_delay_seconds)
+
+    def fetch_one(symbol: str) -> tuple[pd.DataFrame, dict]:
+        cache_path = cache_root / f"{symbol}.html"
+        source_url = _eastmoney_corporate_action_url(symbol)
+        cache_exists = cache_path.is_file()
+        cache_problem: str | None = None
+
+        if cache_exists and not refresh:
+            try:
+                html_text = cache_path.read_text(encoding="utf-8")
+                if not html_text.strip():
+                    cache_problem = "invalid_empty"
+                else:
+                    frame = _parse_eastmoney_corporate_actions(html_text, symbol, source_url)
+                    return frame, {
+                        "symbol": symbol,
+                        "events": len(frame),
+                        "source": "cache",
+                        "cache_status": "hit",
+                        "cache_path": str(cache_path),
+                        "cache_sha256": _text_sha256(html_text),
+                        "request_attempts": 0,
+                        "error": None,
+                    }
+            except Exception:
+                cache_problem = "invalid_parse"
+
+        session: requests.Session | None = None
+        request_attempts = 0
+        try:
+            session = make_session(insecure, automatic_retries=False)
+            html_text, request_attempts = _download_eastmoney_corporate_action_html(
+                session,
+                symbol,
+                attempts=attempts,
+                request_delay_seconds=request_delay_seconds,
+                request_pacer=request_pacer,
+            )
+            frame = _parse_eastmoney_corporate_actions(html_text, symbol, source_url)
+            _atomic_text(html_text, cache_path)
+            if refresh:
+                cache_status = "refreshed" if cache_exists else "refresh_miss_saved"
+            elif cache_problem is not None:
+                cache_status = f"{cache_problem}_replaced"
+            else:
+                cache_status = "miss_saved"
+            return frame, {
+                "symbol": symbol,
+                "events": len(frame),
+                "source": "network",
+                "cache_status": cache_status,
+                "cache_path": str(cache_path),
+                "cache_sha256": _text_sha256(html_text),
+                "request_attempts": request_attempts,
+                "error": None,
+            }
+        except Exception as exc:
+            request_attempts = int(getattr(exc, "attempts", request_attempts))
+            if refresh:
+                cache_status = "refresh_failed_preserved" if cache_exists else "refresh_miss_failed"
+            elif cache_problem is not None:
+                cache_status = f"{cache_problem}_failed_preserved"
+            else:
+                cache_status = "miss_failed"
+            return pd.DataFrame(columns=CORPORATE_ACTION_COLUMNS), {
+                "symbol": symbol,
+                "events": 0,
+                "source": "cache+network" if cache_problem is not None else "network",
+                "cache_status": cache_status,
+                "cache_path": str(cache_path),
+                "cache_sha256": (
+                    hashlib.sha256(cache_path.read_bytes()).hexdigest()
+                    if cache_path.is_file() and cache_path.stat().st_size > 0
+                    else None
+                ),
+                "request_attempts": request_attempts,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        finally:
+            if session is not None:
+                session.close()
+
+    frames: list[pd.DataFrame] = []
+    rows: list[dict] = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(fetch_one, symbol) for symbol in target_symbols]
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Downloading corporate actions"):
+            frame, result = future.result()
+            if result["error"] is None:
+                frames.append(frame)
+            rows.append(result)
+
+    report = pd.DataFrame(rows).sort_values("symbol").reset_index(drop=True)
+    failures = report[report["error"].notna()]
+    full_scope = target_symbols == all_symbols
+    report["full_universe_scope"] = full_scope
+    report["published"] = bool(full_scope and failures.empty)
+    _atomic_csv(report, data_dir / "corporate_action_report.csv")
+    if not failures.empty:
+        raise RuntimeError(
+            f"corporate-action download failed for {len(failures)} ETF(s); "
+            f"see {data_dir / 'corporate_action_report.csv'}"
+        )
+
+    actions = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=CORPORATE_ACTION_COLUMNS)
+    actions = actions[CORPORATE_ACTION_COLUMNS]
+    if not actions.empty:
+        actions = actions.sort_values(["ex_date", "symbol"]).reset_index(drop=True)
+    if full_scope:
+        _atomic_csv(actions, data_dir / "corporate_actions.csv")
+        LOGGER.info("published %d corporate actions for all %d ETFs", len(actions), len(target_symbols))
+    else:
+        LOGGER.info(
+            "cached %d corporate actions for %d/%d ETFs; canonical table was not replaced",
+            len(actions),
+            len(target_symbols),
+            len(all_symbols),
+        )
+    return actions
+
+
 def _sina_total_return_multiplier(prices: pd.DataFrame, factors: pd.DataFrame) -> pd.Series:
     """Convert Sina's affine hfq events into a positive reinvested-return multiplier."""
     merged = pd.merge_asof(
@@ -470,7 +935,7 @@ def fetch_history_sina_pair(
     raw["price_change"] = raw["close"].diff()
     raw["turnover_rate"] = np.nan
     raw["data_source"] = "sina"
-    raw["amount_quality"] = "reported"
+    raw["amount_quality"] = "estimated_ohlc_average"
     raw = raw[
         [
             "date",
@@ -682,7 +1147,10 @@ def download_one(
             if not old.empty:
                 incompatible = "adj_close" not in old.columns
                 if history_source in {"auto", "sina"}:
-                    incompatible |= not old.get("amount_quality", pd.Series(dtype=str)).eq("reported").all()
+                    old_quality = old.get("amount_quality", pd.Series(dtype=str))
+                    incompatible |= not old_quality.isin(
+                        {"reported", "estimated_ohlc_average"}
+                    ).all()
                 if incompatible:
                     old = pd.DataFrame()
                     fetch_start = start_date
@@ -728,14 +1196,40 @@ def download_dataset(
     insecure: bool = False,
     full_refresh: bool = False,
     history_source: str = "auto",
+    frozen_universe: bool = False,
 ) -> tuple[pd.DataFrame, list[DownloadResult]]:
     data_dir.mkdir(parents=True, exist_ok=True)
-    session = make_session(insecure)
-    try:
-        snapshot_date = datetime.now(ZoneInfo("Asia/Shanghai")).date()
-        universe = build_t1_universe(session, snapshot_date)
-    finally:
-        session.close()
+    universe_path = data_dir / "universe.csv"
+    if frozen_universe:
+        if limit is not None or symbols:
+            raise ValueError("--frozen-universe cannot be combined with --limit or --symbols")
+        if not universe_path.is_file():
+            raise FileNotFoundError(f"frozen universe is missing: {universe_path}")
+        universe = pd.read_csv(universe_path, dtype={"code": str})
+        if "symbol" not in universe or universe["symbol"].isna().any():
+            raise ValueError("frozen universe lacks a complete symbol column")
+        universe["symbol"] = universe["symbol"].astype(str).str.upper()
+        if universe["symbol"].duplicated().any():
+            raise ValueError("frozen universe contains duplicate symbols")
+    else:
+        session = make_session(insecure)
+        try:
+            snapshot_date = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+            universe, dropped = build_t1_universe(session, snapshot_date)
+        finally:
+            session.close()
+        if dropped:
+            dropped_frame = pd.DataFrame(dropped)
+            _atomic_csv(dropped_frame, data_dir / "universe_dropped.csv")
+            quote_dropped = dropped_frame[
+                dropped_frame["reason"] == "missing_or_nonpositive_last_price"
+            ]
+            LOGGER.warning(
+                "universe snapshot dropped %d ETF(s), of which %d with missing/non-positive "
+                "last price; details in universe_dropped.csv",
+                len(dropped_frame),
+                len(quote_dropped),
+            )
     universe["history_end_date"] = end_date.isoformat()
     if symbols:
         wanted = {symbol.upper() for symbol in symbols}
@@ -746,7 +1240,7 @@ def download_dataset(
     if limit is not None:
         universe = universe.head(limit)
     universe = universe.reset_index(drop=True)
-    _atomic_csv(universe, data_dir / "universe.csv")
+    _atomic_csv(universe, universe_path)
     raw_dir = data_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     results: list[DownloadResult] = []
@@ -765,7 +1259,8 @@ def download_dataset(
             results.append(result)
             if result.error:
                 LOGGER.error("%s: %s", result.symbol, result.error)
-    result_frame = pd.DataFrame([result.__dict__ for result in results]).sort_values("symbol")
+    results.sort(key=lambda result: result.symbol)
+    result_frame = pd.DataFrame([result.__dict__ for result in results])
     _atomic_csv(result_frame, data_dir / "download_report.csv")
     failures = result_frame[result_frame["error"].notna()]
     _atomic_csv(failures, data_dir / "download_failures.csv")
@@ -863,10 +1358,9 @@ def normalize_frame(raw: pd.DataFrame) -> pd.DataFrame:
         output[column] = frame[f"adj_{column}"] / first_adjusted_close
     output["factor"] = factor
     output["volume"] = frame["volume"] / factor
-    output["change"] = frame["adj_close"].pct_change(fill_method=None)
+    output["change"] = frame["adj_close"].pct_change(fill_method=None).fillna(0.0)
     output["amount"] = frame["amount"]
     output["vwap"] = (frame["amount"] / frame["volume"]) * factor
-    output["turnover_rate"] = frame["turnover_rate"]
     output["amount_estimated"] = (frame["amount_quality"] != "reported").astype(float)
     output["paused"] = 0.0
     values = output[QLIB_FIELDS].to_numpy(dtype=float)
@@ -875,11 +1369,25 @@ def normalize_frame(raw: pd.DataFrame) -> pd.DataFrame:
     return output[["date", "symbol", *QLIB_FIELDS]].reset_index(drop=True)
 
 
+def _universe_symbols(data_dir: Path) -> list[str]:
+    universe = pd.read_csv(data_dir / "universe.csv", dtype={"code": str})
+    if "symbol" not in universe or universe["symbol"].isna().any():
+        raise ValueError("universe.csv lacks a complete symbol column")
+    symbols = universe["symbol"].astype(str).str.upper().tolist()
+    if not symbols or len(symbols) != len(set(symbols)):
+        raise ValueError("universe.csv must contain unique symbols")
+    return symbols
+
+
 def normalize_dataset(data_dir: Path, workers: int = 4) -> pd.DataFrame:
     raw_dir = data_dir / "raw"
     normalized_dir = data_dir / "normalized"
     normalized_dir.mkdir(parents=True, exist_ok=True)
-    files = sorted(raw_dir.glob("*.csv"))
+    symbols = _universe_symbols(data_dir)
+    files = [raw_dir / f"{symbol.lower()}.csv" for symbol in symbols]
+    missing = [path.name for path in files if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"{len(missing)} frozen-universe raw files are missing; examples={missing[:5]}")
     if not files:
         raise FileNotFoundError(f"no raw CSV files under {raw_dir}")
 
@@ -921,9 +1429,20 @@ def validate_dataset(data_dir: Path, expected_end: date | None = None, max_stale
     if not universe_path.exists():
         raise FileNotFoundError(universe_path)
     universe = pd.read_csv(universe_path, dtype={"code": str})
-    raw_files = sorted(raw_dir.glob("*.csv"))
-    files = sorted(normalized_dir.glob("*.csv"))
+    symbols = _universe_symbols(data_dir)
+    raw_files = [raw_dir / f"{symbol.lower()}.csv" for symbol in symbols]
+    files = [normalized_dir / f"{symbol.lower()}.csv" for symbol in symbols]
+    missing_raw_files = [path.name for path in raw_files if not path.is_file()]
+    missing_normalized_files = [path.name for path in files if not path.is_file()]
+    raw_files = [path for path in raw_files if path.is_file()]
+    files = [path for path in files if path.is_file()]
+    all_raw_files = sorted(raw_dir.glob("*.csv"))
+    all_normalized_files = sorted(normalized_dir.glob("*.csv"))
     issues: list[dict] = []
+    for filename in missing_raw_files:
+        issues.append({"phase": "coverage", "file": filename, "error": "missing frozen-universe raw file"})
+    for filename in missing_normalized_files:
+        issues.append({"phase": "coverage", "file": filename, "error": "missing frozen-universe normalized file"})
     raw_total_rows = 0
     reported_amount_rows = 0
     source_counts: dict[str, int] = {}
@@ -955,13 +1474,12 @@ def validate_dataset(data_dir: Path, expected_end: date | None = None, max_stale
                 raise ValueError(f"{jump_count} adjusted return jumps above 25%, examples={jump_dates}")
             amount_reported = raw["amount_quality"].eq("reported")
             reported_amount_rows += int(amount_reported.sum())
-            if not amount_reported.all():
-                raise ValueError(f"{int((~amount_reported).sum())} rows use estimated amount")
             for source, count in raw["data_source"].fillna("missing").value_counts().items():
                 source_counts[str(source)] = source_counts.get(str(source), 0) + int(count)
         except Exception as exc:
             issues.append({"phase": "raw", "file": path.name, "error": f"{type(exc).__name__}: {exc}"})
     total_rows = 0
+    estimated_rows = 0
     end_dates = []
     for path in tqdm(files, desc="Validating normalized data"):
         try:
@@ -990,32 +1508,28 @@ def validate_dataset(data_dir: Path, expected_end: date | None = None, max_stale
                 raise ValueError("contains invalid normalized OHLC ordering")
             if (frame["change"].abs() > 0.25).any():
                 raise ValueError("contains adjusted return jumps above 25%")
-            if frame["amount_estimated"].fillna(1).ne(0).any():
-                raise ValueError("contains estimated amount")
+            estimated_rows += int(frame["amount_estimated"].fillna(1).ne(0).sum())
             end_date = frame["date"].max().date()
             end_dates.append(end_date)
             if expected_end and (expected_end - end_date).days > max_stale_days:
                 raise ValueError(f"stale last date: {end_date}")
         except Exception as exc:
             issues.append({"phase": "normalized", "file": path.name, "error": f"{type(exc).__name__}: {exc}"})
-    if len(raw_files) != len(universe):
-        issues.append(
-            {"phase": "coverage", "file": None, "error": f"raw file count {len(raw_files)} != universe {len(universe)}"}
-        )
-    if len(files) != len(universe):
-        issues.append(
-            {"phase": "coverage", "file": None, "error": f"normalized file count {len(files)} != universe {len(universe)}"}
-        )
     training_ready = not issues
     report = {
         "generated_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
         "training_ready": training_ready,
         "universe_count": int(len(universe)),
         "raw_file_count": len(raw_files),
+        "raw_cache_file_count": len(all_raw_files),
+        "pool_external_raw_file_count": len(all_raw_files) - len(raw_files),
         "raw_total_rows": raw_total_rows,
         "data_source_rows": source_counts,
         "reported_amount_ratio": reported_amount_rows / raw_total_rows if raw_total_rows else 0.0,
+        "estimated_amount_ratio": estimated_rows / total_rows if total_rows else 0.0,
         "normalized_file_count": len(files),
+        "normalized_cache_file_count": len(all_normalized_files),
+        "pool_external_normalized_file_count": len(all_normalized_files) - len(files),
         "total_rows": total_rows,
         "min_latest_date": min(end_dates).isoformat() if end_dates else None,
         "max_latest_date": max(end_dates).isoformat() if end_dates else None,
@@ -1032,8 +1546,11 @@ def validate_dataset(data_dir: Path, expected_end: date | None = None, max_stale
 
 def dump_to_qlib(data_dir: Path, qlib_dir: Path, workers: int = 4, overwrite: bool = False) -> None:
     normalized_dir = data_dir / "normalized"
-    if not any(normalized_dir.glob("*.csv")):
-        raise FileNotFoundError(f"no normalized CSV files under {normalized_dir}")
+    symbols = _universe_symbols(data_dir)
+    selected_files = [normalized_dir / f"{symbol.lower()}.csv" for symbol in symbols]
+    missing = [path.name for path in selected_files if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"{len(missing)} frozen-universe normalized files are missing; examples={missing[:5]}")
     qlib_dir = qlib_dir.resolve()
     if qlib_dir in {QLIB_ROOT.resolve(), data_dir.resolve(), normalized_dir.resolve()}:
         raise ValueError(f"refusing to overwrite unsafe qlib target: {qlib_dir}")
@@ -1055,6 +1572,7 @@ def dump_to_qlib(data_dir: Path, qlib_dir: Path, workers: int = 4, overwrite: bo
         symbol_field_name="symbol",
         include_fields=",".join(QLIB_FIELDS),
     )
+    dumper.df_files = selected_files
     dumper.dump()
     all_file = qlib_dir / "instruments" / "all.txt"
     shutil.copy2(all_file, qlib_dir / "instruments" / "t1_etf.txt")
@@ -1086,6 +1604,11 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--workers", type=int, default=4)
     download.add_argument("--limit", type=int)
     download.add_argument("--symbols", nargs="+")
+    download.add_argument(
+        "--frozen-universe",
+        action="store_true",
+        help="reuse universe.csv exactly and update only its symbols",
+    )
     download.add_argument("--full-refresh", action="store_true")
     download.add_argument("--insecure", action="store_true")
     download.add_argument("--history-source", choices=("auto", "sina", "eastmoney", "tencent"), default="auto")
@@ -1094,6 +1617,21 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(readjust)
     readjust.add_argument("--workers", type=int, default=4)
     readjust.add_argument("--insecure", action="store_true")
+
+    actions = subparsers.add_parser("actions", help="download auditable ETF cash distributions and share conversions")
+    add_common(actions)
+    actions.add_argument("--workers", type=int, default=4)
+    actions.add_argument("--symbols", nargs="+")
+    actions.add_argument("--symbols-file", type=Path)
+    actions.add_argument("--cache-dir", type=Path)
+    actions.add_argument("--refresh", action="store_true")
+    actions.add_argument(
+        "--request-delay-seconds",
+        type=float,
+        default=DEFAULT_ACTION_REQUEST_DELAY_SECONDS,
+    )
+    actions.add_argument("--attempts", type=int, default=DEFAULT_ACTION_ATTEMPTS)
+    actions.add_argument("--insecure", action="store_true")
 
     normalize = subparsers.add_parser("normalize", help="clean raw histories and apply Qlib normalization")
     add_common(normalize)
@@ -1118,6 +1656,11 @@ def build_parser() -> argparse.ArgumentParser:
     all_parser.add_argument("--workers", type=int, default=4)
     all_parser.add_argument("--limit", type=int)
     all_parser.add_argument("--symbols", nargs="+")
+    all_parser.add_argument(
+        "--frozen-universe",
+        action="store_true",
+        help="reuse universe.csv exactly and update only its symbols",
+    )
     all_parser.add_argument("--full-refresh", action="store_true")
     all_parser.add_argument("--insecure", action="store_true")
     all_parser.add_argument("--history-source", choices=("auto", "sina", "eastmoney", "tencent"), default="auto")
@@ -1140,11 +1683,25 @@ def main(argv: list[str] | None = None) -> int:
             args.insecure,
             args.full_refresh,
             args.history_source,
+            args.frozen_universe,
         )
         failures = [result for result in results if result.error]
         return 1 if failures else 0
     if args.command == "readjust":
         readjust_sina_dataset(args.data_dir, args.workers, args.insecure)
+        return 0
+    if args.command == "actions":
+        collect_corporate_actions(
+            args.data_dir,
+            args.workers,
+            args.insecure,
+            args.symbols,
+            args.symbols_file,
+            args.cache_dir,
+            args.refresh,
+            args.request_delay_seconds,
+            args.attempts,
+        )
         return 0
     if args.command == "normalize":
         normalize_dataset(args.data_dir, args.workers)
@@ -1167,6 +1724,7 @@ def main(argv: list[str] | None = None) -> int:
             args.insecure,
             args.full_refresh,
             args.history_source,
+            args.frozen_universe,
         )
         failures = [result for result in results if result.error]
         if failures:

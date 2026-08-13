@@ -7,6 +7,8 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass
 from typing import Any
 
+import numpy as np
+import pandas as pd
 import qlib
 from qlib.backtest.decision import Order
 from qlib.backtest.exchange import Exchange
@@ -14,6 +16,20 @@ from qlib.backtest.exchange import Exchange
 
 ROUND_LOT = 100
 _COST_TOLERANCE = 1e-8
+_TICK_RECONSTRUCTION_TOLERANCE = 1e-3
+PRICE_LIMIT_MODE = "ohlc_proven_tier_conservative"
+RAW_HIGH_EXPRESSION = "$high/$factor"
+RAW_LOW_EXPRESSION = "$low/$factor"
+CURRENT_RAW_CLOSE_EXPRESSION = "$close/$factor"
+PREVIOUS_RAW_CLOSE_EXPRESSION = "Ref($close/$factor,1)"
+PREVIOUS_FACTOR_EXPRESSION = "Ref($factor,1)"
+_PRICE_LIMIT_EXPRESSIONS = {
+    RAW_HIGH_EXPRESSION,
+    RAW_LOW_EXPRESSION,
+    CURRENT_RAW_CLOSE_EXPRESSION,
+    PREVIOUS_RAW_CLOSE_EXPRESSION,
+    PREVIOUS_FACTOR_EXPRESSION,
+}
 
 
 def validate_qlib_backtest_api() -> dict[str, Any]:
@@ -99,6 +115,127 @@ def _finite_absolute(name: str, value: Any) -> float:
     except (TypeError, ValueError) as exc:
         raise TypeError(f"{name} must be a real number") from exc
     return _finite_nonnegative(name, number)
+
+
+def _ratio_to_basis_points(name: str, value: Any) -> int:
+    ratio = _finite_nonnegative(name, value)
+    basis_points = round(ratio * 10_000)
+    if not math.isclose(ratio, basis_points / 10_000.0, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError(f"{name} must resolve to an integer number of basis points")
+    return basis_points
+
+
+def _prices_to_ticks(values: pd.Series, price_tick: float) -> tuple[np.ndarray, np.ndarray]:
+    numeric = pd.to_numeric(values, errors="coerce").to_numpy(dtype=float)
+    scaled = numeric / price_tick
+    rounded = np.rint(scaled)
+    valid = (
+        np.isfinite(numeric)
+        & (numeric > 0)
+        & np.isclose(
+            scaled,
+            rounded,
+            rtol=0.0,
+            atol=_TICK_RECONSTRUCTION_TOLERANCE,
+        )
+    )
+    ticks = np.zeros(len(numeric), dtype=np.int64)
+    ticks[valid] = rounded[valid].astype(np.int64)
+    return ticks, valid
+
+
+def _rounded_limit_ticks(previous_ticks: np.ndarray, ratio_bps: int, *, upper: bool) -> np.ndarray:
+    multiplier = 10_000 + ratio_bps if upper else 10_000 - ratio_bps
+    if multiplier <= 0:
+        raise ValueError("price limit ratio must be below 100%")
+    # All values are positive. Adding half a tick implements exchange-style
+    # ROUND_HALF_UP without binary floating-point ambiguity.
+    return (previous_ticks * multiplier + 5_000) // 10_000
+
+
+def infer_daily_price_limit_flags(
+    *,
+    previous_raw_close: pd.Series,
+    current_raw_close: pd.Series,
+    raw_high: pd.Series,
+    raw_low: pd.Series,
+    current_factor: pd.Series,
+    previous_factor: pd.Series,
+    suspended: pd.Series,
+    standard_limit_ratio: float = 0.10,
+    wide_limit_ratio: float = 0.20,
+    price_tick: float = 0.001,
+) -> pd.DataFrame:
+    """Infer conservative directional limit flags from information known by the close.
+
+    A range beyond the tick-rounded 10% boundary proves that the wider tier
+    applied on that date. Otherwise the standard tier is retained, which can
+    reject a tradable 20% ETF at exactly the ambiguous 10% boundary but cannot
+    create a fill at a 10% limit. Corporate-action and malformed-reference rows
+    are blocked in both directions because the daily reference price is absent.
+    """
+
+    index = previous_raw_close.index
+    aligned = [current_raw_close, raw_high, raw_low, current_factor, previous_factor, suspended]
+    if any(not value.index.equals(index) for value in aligned):
+        raise ValueError("price-limit inputs must have identical indexes")
+    tick = _finite_nonnegative("price_tick", price_tick)
+    if tick <= 0:
+        raise ValueError("price_tick must be positive")
+    standard_bps = _ratio_to_basis_points("standard_limit_ratio", standard_limit_ratio)
+    wide_bps = _ratio_to_basis_points("wide_limit_ratio", wide_limit_ratio)
+    if not 0 < standard_bps < wide_bps < 10_000:
+        raise ValueError("price limit ratios must satisfy 0 < standard < wide < 1")
+
+    previous_ticks, previous_valid = _prices_to_ticks(previous_raw_close, tick)
+    close_ticks, close_valid = _prices_to_ticks(current_raw_close, tick)
+    high_ticks, high_valid = _prices_to_ticks(raw_high, tick)
+    low_ticks, low_valid = _prices_to_ticks(raw_low, tick)
+    current_factor_values = pd.to_numeric(current_factor, errors="coerce").to_numpy(dtype=float)
+    previous_factor_values = pd.to_numeric(previous_factor, errors="coerce").to_numpy(dtype=float)
+    factors_valid = (
+        np.isfinite(current_factor_values)
+        & np.isfinite(previous_factor_values)
+        & (current_factor_values > 0)
+        & (previous_factor_values > 0)
+    )
+    corporate_action = factors_valid & ~np.isclose(
+        current_factor_values,
+        previous_factor_values,
+        rtol=1e-10,
+        atol=1e-12,
+    )
+    invalid_reference = ~(previous_valid & close_valid & high_valid & low_valid & factors_valid)
+    suspended_values = suspended.fillna(True).astype(bool).to_numpy()
+
+    standard_upper = _rounded_limit_ticks(previous_ticks, standard_bps, upper=True)
+    standard_lower = _rounded_limit_ticks(previous_ticks, standard_bps, upper=False)
+    wide_upper = _rounded_limit_ticks(previous_ticks, wide_bps, upper=True)
+    wide_lower = _rounded_limit_ticks(previous_ticks, wide_bps, upper=False)
+    wide_tier_proven = (
+        ~invalid_reference
+        & ~corporate_action
+        & ((high_ticks > standard_upper) | (low_ticks < standard_lower))
+    )
+    applicable_upper = np.where(wide_tier_proven, wide_upper, standard_upper)
+    applicable_lower = np.where(wide_tier_proven, wide_lower, standard_lower)
+    blocked = invalid_reference | corporate_action | suspended_values
+    # High/low can prove which tier applied, but a close-price fill is blocked
+    # only when the closing price itself remains at the directional limit.
+    limit_buy = blocked | (close_ticks >= applicable_upper)
+    limit_sell = blocked | (close_ticks <= applicable_lower)
+
+    return pd.DataFrame(
+        {
+            "limit_buy": limit_buy,
+            "limit_sell": limit_sell,
+            "wide_tier_proven": wide_tier_proven,
+            "corporate_action_block": corporate_action,
+            "invalid_reference_block": invalid_reference,
+            "suspended_block": suspended_values,
+        },
+        index=index,
+    )
 
 
 @dataclass(frozen=True)
@@ -462,10 +599,18 @@ class SmallAccountExchange(Exchange):
         min_commission: float = 5.0,
         slippage_bps: float = 0.0,
         trade_unit: int = ROUND_LOT,
+        price_limit_mode: str = PRICE_LIMIT_MODE,
+        standard_limit_ratio: float = 0.10,
+        wide_limit_ratio: float = 0.20,
+        price_tick: float = 0.001,
         **exchange_kwargs: Any,
     ) -> None:
         if isinstance(trade_unit, bool) or trade_unit != ROUND_LOT:
             raise ValueError(f"trade_unit must be exactly {ROUND_LOT}")
+        if price_limit_mode != PRICE_LIMIT_MODE:
+            raise ValueError(f"price_limit_mode must be {PRICE_LIMIT_MODE}")
+        if "limit_threshold" in exchange_kwargs:
+            raise TypeError("use the explicit ETF price-limit parameters instead of limit_threshold")
         conflicting = {"open_cost", "close_cost", "min_cost", "impact_cost"} & set(exchange_kwargs)
         if conflicting:
             raise TypeError(
@@ -474,12 +619,21 @@ class SmallAccountExchange(Exchange):
             )
         self.cost_model = LinearCostModel(commission_rate, min_commission, slippage_bps)
         self._execution_records: list[ExecutionRecord] = []
+        self.price_limit_mode = price_limit_mode
+        self.standard_limit_ratio = float(standard_limit_ratio)
+        self.wide_limit_ratio = float(wide_limit_ratio)
+        self.price_tick = float(price_tick)
+        self._price_limit_audit: dict[str, Any] = {}
+        subscribe_fields = set(exchange_kwargs.pop("subscribe_fields", []))
+        subscribe_fields.update(_PRICE_LIMIT_EXPRESSIONS)
         super().__init__(
             open_cost=self.cost_model.commission_rate,
             close_cost=self.cost_model.commission_rate,
             min_cost=self.cost_model.min_commission,
             impact_cost=0.0,
             trade_unit=trade_unit,
+            limit_threshold=self.standard_limit_ratio,
+            subscribe_fields=sorted(subscribe_fields),
             **exchange_kwargs,
         )
         if self.trade_w_adj_price:
@@ -491,6 +645,46 @@ class SmallAccountExchange(Exchange):
     @property
     def execution_records(self) -> tuple[ExecutionRecord, ...]:
         return tuple(self._execution_records)
+
+    @property
+    def price_limit_audit(self) -> dict[str, Any]:
+        return dict(self._price_limit_audit)
+
+    def _update_limit(self, limit_threshold: Any) -> None:
+        if not math.isclose(
+            float(limit_threshold), self.standard_limit_ratio, rel_tol=0.0, abs_tol=1e-12
+        ):
+            raise RuntimeError("Qlib price-limit threshold diverged from the declared standard tier")
+        flags = infer_daily_price_limit_flags(
+            previous_raw_close=self.quote_df[PREVIOUS_RAW_CLOSE_EXPRESSION],
+            current_raw_close=self.quote_df[CURRENT_RAW_CLOSE_EXPRESSION],
+            raw_high=self.quote_df[RAW_HIGH_EXPRESSION],
+            raw_low=self.quote_df[RAW_LOW_EXPRESSION],
+            current_factor=self.quote_df["$factor"],
+            previous_factor=self.quote_df[PREVIOUS_FACTOR_EXPRESSION],
+            suspended=self.quote_df["$close"].isna(),
+            standard_limit_ratio=self.standard_limit_ratio,
+            wide_limit_ratio=self.wide_limit_ratio,
+            price_tick=self.price_tick,
+        )
+        self.quote_df["limit_buy"] = flags["limit_buy"]
+        self.quote_df["limit_sell"] = flags["limit_sell"]
+        rows = len(flags)
+        self._price_limit_audit = {
+            "mode": self.price_limit_mode,
+            "standard_limit_ratio": self.standard_limit_ratio,
+            "wide_limit_ratio": self.wide_limit_ratio,
+            "price_tick": self.price_tick,
+            "rows": rows,
+            "buy_blocked_rows": int(flags["limit_buy"].sum()),
+            "sell_blocked_rows": int(flags["limit_sell"].sum()),
+            "wide_tier_proven_rows": int(flags["wide_tier_proven"].sum()),
+            "corporate_action_block_rows": int(flags["corporate_action_block"].sum()),
+            "invalid_reference_block_rows": int(flags["invalid_reference_block"].sum()),
+            "suspended_block_rows": int(flags["suspended_block"].sum()),
+            "ambiguous_tier_policy": "standard_10_percent_fail_closed",
+            "daily_bar_policy": "close_fill_blocked_only_when_raw_close_reaches_rounded_limit",
+        }
 
     def clear_execution_records(self) -> None:
         self._execution_records.clear()

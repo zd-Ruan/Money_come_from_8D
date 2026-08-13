@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .integrity import verify_artifact_checksums
+from .integrity import combine_runtime_code_sha256, verify_artifact_checksums
 from .io import now_shanghai, read_json, sha256_file, write_json_atomic
 from .metrics import evaluation_frame, hac_t_stat
 
@@ -80,12 +80,20 @@ def _code_identity(manifest: dict[str, Any], role: str) -> str:
     code = manifest.get("code")
     if not isinstance(code, dict):
         raise ValueError(f"{role} manifest is missing code identity metadata")
-    digest = code.get("source_tree_sha256")
-    if not isinstance(digest, str) or not _FINGERPRINT_PATTERN.fullmatch(digest):
-        raise ValueError(
-            f"{role} manifest code.source_tree_sha256 must be a 64-character hexadecimal digest"
-        )
-    return digest.lower()
+    components = {}
+    for field in ("pipeline_source_sha256", "qlib_package_sha256", "runtime_code_sha256"):
+        digest = code.get(field)
+        if not isinstance(digest, str) or not _FINGERPRINT_PATTERN.fullmatch(digest):
+            raise ValueError(
+                f"{role} manifest code.{field} must be a 64-character hexadecimal digest"
+            )
+        components[field] = digest.lower()
+    expected = combine_runtime_code_sha256(
+        components["pipeline_source_sha256"], components["qlib_package_sha256"]
+    )
+    if components["runtime_code_sha256"] != expected:
+        raise ValueError(f"{role} manifest runtime code identity does not match its components")
+    return expected
 
 
 def _verify_run_integrity(run_dir: Path, manifest: dict[str, Any], role: str) -> None:
@@ -692,7 +700,7 @@ def compare_completed_runs(
         baseline_source_tree = _code_identity(baseline_manifest, "baseline")
         candidate_source_tree = _code_identity(candidate_manifest, "candidate")
         if baseline_source_tree != candidate_source_tree:
-            reasons.append("code.source_tree_sha256 differs")
+            reasons.append("code.runtime_code_sha256 differs")
     except ValueError as exc:
         reasons.append(str(exc))
         baseline_source_tree = candidate_source_tree = None
@@ -790,7 +798,7 @@ def compare_completed_runs(
         "conditions": {
             "source_fingerprint": baseline_fingerprint,
             "snapshot_id": baseline_snapshot,
-            "source_tree_sha256": baseline_source_tree,
+            "runtime_code_sha256": baseline_source_tree,
             "base_slippage_bps_per_side": baseline_config["execution"]["base_slippage_bps_per_side"],
             "evaluation_start_date": baseline_returns.index.min().date().isoformat(),
             "evaluation_end_date": baseline_returns.index.max().date().isoformat(),

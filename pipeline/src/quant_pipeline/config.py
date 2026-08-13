@@ -80,6 +80,14 @@ def validate_config(config: dict[str, Any]) -> None:
         raise ValueError("execution.trade_unit must be 100 for this ETF pipeline")
     if int(execution.get("stamp_tax_bps", 0)) != 0:
         raise ValueError("stock ETF stamp tax must remain zero unless the instrument scope changes")
+    if execution.get("price_limit_mode") != "ohlc_proven_tier_conservative":
+        raise ValueError("execution.price_limit_mode must be ohlc_proven_tier_conservative")
+    if float(execution.get("standard_limit_ratio", 0.0)) != 0.10:
+        raise ValueError("execution.standard_limit_ratio must be 0.10")
+    if float(execution.get("wide_limit_ratio", 0.0)) != 0.20:
+        raise ValueError("execution.wide_limit_ratio must be 0.20")
+    if float(execution.get("price_tick", 0.0)) != 0.001:
+        raise ValueError("execution.price_tick must be 0.001 for the current ETF scope")
     if not 1 <= int(strategy["topk"]) <= 20:
         raise ValueError("strategy.topk must be between 1 and 20")
     if not 0 <= int(strategy["n_drop"]) <= int(strategy["topk"]):
@@ -90,6 +98,16 @@ def validate_config(config: dict[str, Any]) -> None:
         raise ValueError("model.device_type must be cpu or gpu")
     if int(gates["min_complete_folds"]) < 1:
         raise ValueError("gates.min_complete_folds must be positive")
+    if int(gates.get("research_fold_days", 0)) < 5:
+        raise ValueError("gates.research_fold_days must be at least 5")
+    for key in (
+        "min_research_fold_win_ratio",
+        "max_single_etf_abs_contribution_share",
+        "max_single_fold_abs_incremental_pnl_share",
+    ):
+        value = float(gates.get(key, -1.0))
+        if not 0.0 < value <= 1.0:
+            raise ValueError(f"gates.{key} must be in (0, 1]")
 
 
 def json_ready_config(config: dict[str, Any]) -> dict[str, Any]:

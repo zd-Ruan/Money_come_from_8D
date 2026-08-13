@@ -1,0 +1,137 @@
+{
+  "generated_at": "2026-08-13T17:24:46.656354+08:00",
+  "snapshot_id": "20260812-39ba739a0e49",
+  "source_fingerprint": "39ba739a0e49b7065b73b2210bb1f566caeceb7349981c60481ee64990677a2b",
+  "audit_identity": {
+    "schema_version": "6",
+    "configured_end": "2026-08-12",
+    "universe_mode": "current_snapshot"
+  },
+  "data_valid": false,
+  "promotion_eligible": false,
+  "universe_mode": "current_snapshot",
+  "counts": {
+    "universe": 1438,
+    "instruments": 1438,
+    "feature_directories": 1438,
+    "feature_files": 15818,
+    "raw_files_total": 1441,
+    "normalized_files_total": 1441,
+    "pool_external_raw_symbols": 3,
+    "pool_external_normalized_symbols": 3,
+    "corporate_action_events": 854,
+    "corporate_action_source_files": 1438
+  },
+  "calendar": {
+    "start": "2005-02-23",
+    "end": "2026-08-12",
+    "requested_end": "2026-08-12",
+    "sessions": 5219,
+    "future_boundary": "2026-08-13"
+  },
+  "coverage": {
+    "missing_in_instruments": [],
+    "extra_in_instruments": [],
+    "missing_feature_dirs": [],
+    "missing_raw": [],
+    "missing_normalized": [],
+    "provider_features": {
+      "required_fields": [
+        "open",
+        "close",
+        "high",
+        "low",
+        "volume",
+        "factor",
+        "change",
+        "amount",
+        "vwap",
+        "amount_estimated",
+        "paused"
+      ],
+      "missing_fields": {},
+      "malformed_files": [],
+      "inconsistent_length_symbols": [],
+      "interval_mismatch_symbols": [],
+      "validated_symbols": 1438
+    }
+  },
+  "upstream_validation": {
+    "generated_at": "2026-08-13T17:16:18.293757+08:00",
+    "training_ready": true,
+    "issue_count": 0,
+    "reported_amount_ratio": 0.9732458717380663,
+    "whitelist_scoped_ready": true
+  },
+  "corporate_actions": {
+    "report_rows": 1438,
+    "events": 854,
+    "source_cache_files": 1438,
+    "complete_universe": false
+  },
+  "source_inventory": {
+    "path": "source_inventory.json",
+    "file_count": 20139,
+    "sha256": "29195e79811025c5df36082d077806ebbed5b8f2bd41403aea256617b395fb29"
+  },
+  "frozen_controls": {
+    "files": [
+      {
+        "scope": "data",
+        "source_path": "corporate_action_report.csv",
+        "snapshot_path": "corporate_action_report.csv",
+        "size": 123725,
+        "sha256": "647c000a25db5c6c27a6f151ad85cb0bf3aa8f2e9f9f26e3e8d752b28a46174e"
+      },
+      {
+        "scope": "data",
+        "source_path": "corporate_actions.csv",
+        "snapshot_path": "corporate_actions.csv",
+        "size": 204356,
+        "sha256": "d8e4ccc0f193bfa65de9e5af64350575c08206595d5a2eaefac2188139d526a5"
+      },
+      {
+        "scope": "data",
+        "source_path": "universe.csv",
+        "snapshot_path": "universe.csv",
+        "size": 43464,
+        "sha256": "f4aa1abe7d49bf455618535fa8202f30fef976161d851d77855df169634ea851"
+      },
+      {
+        "scope": "data",
+        "source_path": "validation_report.json",
+        "snapshot_path": "validation_report.json",
+        "size": 645,
+        "sha256": "8a8fa4466017a44119e9971659f55b3e8afc7526f3a3e67c7df0f5144fa3d788"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "calendars/day.txt",
+        "snapshot_path": "day.txt",
+        "size": 62628,
+        "sha256": "b97c0854884995f3613cb2852a03b10b6c646deda34f60565bbc5261f5acd71e"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "calendars/day_future.txt",
+        "snapshot_path": "day_future.txt",
+        "size": 57420,
+        "sha256": "da27e3dbabfcca023f4a5b3bc63e6964a4873c11298987449f6474b64e343a01"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "instruments/t1_etf.txt",
+        "snapshot_path": "t1_etf.txt",
+        "size": 46016,
+        "sha256": "bfe969065fa5155d603fa9c2e657d731e6f9015d77b9af96aa0b5e522999a459"
+      }
+    ]
+  },
+  "blocking_issues": [
+    "corporate-action event provenance does not match the frozen source cache"
+  ],
+  "warnings": [
+    "current ETF snapshot is backfilled through history; survivor bias remains"
+  ],
+  "manifest_sha256": "843e4940d13f695a44f7bc2855eb7b1915ef12d380553294939a57d68723dd49"
+}

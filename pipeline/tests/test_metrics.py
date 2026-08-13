@@ -24,6 +24,9 @@ class MetricTests(unittest.TestCase):
         self.assertAlmostEqual(compounded_return(returns), -0.01)
         self.assertAlmostEqual(max_drawdown(returns), -0.10)
 
+    def test_drawdown_includes_loss_from_initial_capital(self):
+        self.assertAlmostEqual(max_drawdown(pd.Series([-0.20, 0.10])), -0.20)
+
     def test_hac_t_stat_is_finite(self):
         values = pd.Series([0.001, 0.002, -0.001, 0.003] * 20)
         self.assertTrue(pd.notna(hac_t_stat(values)))

@@ -265,10 +265,10 @@ def _factor_audit(manifest: dict[str, Any], config: dict[str, Any]) -> tuple[str
         return "Alpha158", ""
     catalog = manifest.get("factor_catalog")
     if not isinstance(catalog, dict):
-        return "Alpha158 + 原创因子（目录缺失）", ""
+        return "Alpha158 + 原创研究候选（目录缺失）", ""
     factors = catalog.get("factors")
     if not isinstance(factors, list):
-        return "Alpha158 + 原创因子（目录缺失）", ""
+        return "Alpha158 + 原创研究候选（目录缺失）", ""
     rows = []
     for factor in factors:
         if not isinstance(factor, dict):
@@ -285,18 +285,18 @@ def _factor_audit(manifest: dict[str, Any], config: dict[str, Any]) -> tuple[str
             "</tr>"
         )
     if not rows:
-        return "Alpha158 + 原创因子（目录为空）", ""
+        return "Alpha158 + 原创研究候选（目录为空）", ""
     families = catalog.get("families", [])
     family_text = "、".join(html.escape(str(value)) for value in families) if isinstance(families, list) else "-"
     digest = html.escape(str(catalog.get("sha256", "-")))
     section = (
         '<section class="section"><div class="section-head"><h2>冻结因子目录</h2>'
-        f'<div class="section-note">族群 {family_text} · 共 {len(rows)} 个原创因子 · SHA-256 {digest}</div></div>'
+        f'<div class="section-note">族群 {family_text} · 共 {len(rows)} 个原创研究候选 · SHA-256 {digest}</div></div>'
         '<div class="table-wrap"><table><thead><tr><th>因子</th><th>族群</th><th>方向</th>'
         '<th class="num">回看期</th><th>预注册假设</th></tr></thead>'
         f"<tbody>{''.join(rows)}</tbody></table></div></section>"
     )
-    return f"Alpha158 + {len(rows)} 个冻结原创因子", section
+    return f"Alpha158 + {len(rows)} 个冻结原创研究候选", section
 
 
 def _write_text_atomic(path: Path, document: str) -> None:
@@ -391,6 +391,16 @@ def generate_report(run_dir: Path, *, overwrite: bool = False) -> Path:
         else "旧运行未记录相对财富最大回撤"
     )
     alignment_note = _alignment_note(base)
+    standard_limit = float(config["execution"]["standard_limit_ratio"])
+    wide_limit = float(config["execution"]["wide_limit_ratio"])
+    price_tick = float(config["execution"]["price_tick"])
+    execution_assumption = (
+        f"日线成交代理按下一交易日收盘价撮合；用未复权 OHLC 和 {price_tick:.3f} 元价位计算"
+        f" {standard_limit:.0%}/{wide_limit:.0%} 方向性涨跌停。只有当日区间越过 10% 边界才认定"
+        " 20% 档，否则按 10% 失败关闭；除权或参考价不完整日双向禁交易。日线数据无法重建"
+        "封板排队或盘中盘口。组合账本使用未复权价格、真实基金份额和人民币现金；"
+        "登记日冻结分红权利，除息日计入应收，发放日才成为可交易现金。"
+    )
 
     css = """
     :root { --ink:#17212a; --muted:#64727b; --line:#dce2e5; --soft:#f5f7f7;
@@ -448,7 +458,7 @@ def generate_report(run_dir: Path, *, overwrite: bool = False) -> Path:
     <div class="metric"><div class="label">扣费超额 HAC t</div><div class="value">{fmt_num(base['excess_hac_t_stat'], 2)}</div><div class="note">信息比率 {fmt_num(base['information_ratio'], 2)}</div></div>
     <div class="metric"><div class="label">市场暴露</div><div class="value">β {fmt_num(base['beta'], 2)}</div><div class="note">beta 调整年化 alpha {fmt_pct(base['beta_adjusted_alpha_annualized'])}</div></div>
   </section>
-  <div class="alert"><div class="alert-head"><span class="status {badge_class}">{badge_text}</span>可信度结论</div>{html.escape(warning)}</div>
+  <div class="alert"><div class="alert-head"><span class="status {badge_class}">{badge_text}</span>可信度结论</div>{html.escape(warning)}<br>{html.escape(execution_assumption)}</div>
 
   <section class="section"><div class="section-head"><h2>收益与风险</h2><div class="section-note">{html.escape(alignment_note)} 基础成本含真实佣金、{base_slippage}bp 滑点和 5% 成交量上限。</div></div>
     <div class="wide">{chart_html(_performance_chart(aligned), 470, True)}</div>
@@ -465,7 +475,7 @@ def generate_report(run_dir: Path, *, overwrite: bool = False) -> Path:
   <section class="section"><div class="section-head"><h2>滚动训练审计</h2><div class="section-note">训练、验证、测试之间均隔离 {config['rolling']['purge_bars']} 个交易日；{fold_note}</div></div>
     <div class="table-wrap"><table><thead><tr><th>Fold</th><th>训练期</th><th>验证期</th><th>测试期</th><th class="num">训练样本</th><th class="num">测试样本</th><th class="num">IC</th><th class="num">Rank IC</th><th>组合口径</th><th>门禁完整</th><th class="num">{fold_excess_label}</th><th class="num">最佳迭代</th></tr></thead><tbody>{''.join(fold_rows)}</tbody></table></div>
   </section>
-  <footer>本报告只读取运行产物，不在网页端重新计算关键指标。状态为“仅限研究”时不得将结果解释为实盘预期。数据、配置、模型、预测、持仓和成本场景均保存在对应运行目录中。</footer>
+  <footer>本报告只读取运行产物，不在网页端重新计算关键指标。状态为“仅限研究”时不得将结果解释为实盘预期。日线回测不是订单簿仿真；最终收益来自未复权价格、真实份额、人民币现金和逐事件公司行动账本。数据、配置、模型、预测、持仓和成本场景均保存在对应运行目录中。</footer>
 </main></body></html>"""
 
     _write_text_atomic(output, document)

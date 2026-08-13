@@ -76,11 +76,14 @@ class FactorResearchProtocol:
 
 
 RESEARCH_PROTOCOL = FactorResearchProtocol(
-    protocol_version="purged_family_ablation_v1",
+    protocol_version="purged_joint_ledger_v2",
     catalog_version=FACTOR_CATALOG_VERSION,
     stage_order=("family_ablation", "candidate_confirmation", "locked_holdout"),
     discovery_scope="purged rolling train and validation folds only",
-    primary_metric="mean validation daily rank IC in the declared direction",
+    primary_metric=(
+        "intersection-union of paired daily rank IC and 10 bps stress raw-share "
+        "net-return improvements versus unchanged Alpha158"
+    ),
     multiplicity_control="Benjamini-Hochberg false-discovery rate at q=0.10 within the frozen catalog",
     locked_holdout_policy=(
         "Do not inspect or tune on the final chronological holdout until families, candidates, model, and strategy "
@@ -89,7 +92,7 @@ RESEARCH_PROTOCOL = FactorResearchProtocol(
     required_robustness_checks=(
         "same sign in a majority of validation folds",
         "incremental result versus the unchanged Alpha158 baseline",
-        "positive net excess at the configured 10 bps slippage stress",
+        "positive paired strategy-net and terminal-account improvement versus Alpha158 at 10 bps stress",
         "no material concentration in one instrument or one fold",
         "research-only classification while the ETF universe is not point-in-time",
     ),
@@ -354,104 +357,6 @@ ORIGINAL_RESEARCH_CANDIDATES: tuple[FactorDefinition, ...] = (
         ),
         lookback=20,
     ),
-    FactorDefinition(
-        name="ORC_TREND_RSQR_STRESS_20",
-        family="trend_crowding",
-        expression=(
-            "Rsquare($close,20)"
-            "*(Std($close/Ref($close,1)-1,5)/(Std($close/Ref($close,1)-1,20)+1e-12))"
-        ),
-        direction=-1,
-        hypothesis=(
-            "A highly linear 20-bar trend with unusually volatile short returns is crowded and is more likely to "
-            "partially unwind than to continue cleanly."
-        ),
-        lookback=20,
-    ),
-    FactorDefinition(
-        name="ORC_TREND_ACCEL_GAP_10_30",
-        family="trend_crowding",
-        expression=(
-            "(Slope($close,10)/$close)/(Slope($close,30)/$close+1e-12)-1"
-        ),
-        direction=-1,
-        hypothesis=(
-            "A short-term normalized trend running far ahead of its medium-term trend is late acceleration rather "
-            "than fresh trend strength and is more likely to revert."
-        ),
-        lookback=30,
-    ),
-    FactorDefinition(
-        name="ORC_VOLUME_CLIMAX_10",
-        family="volume_impact",
-        expression=(
-            "($volume/Mean(Ref($volume,1),20))"
-            "*(2*$close-$high-$low)/($high-$low+1e-12)"
-        ),
-        direction=-1,
-        hypothesis=(
-            "Exceptional volume combined with a lower-close candle indicates absorption or distribution that is "
-            "more likely to be followed by a short-term fade."
-        ),
-        lookback=20,
-    ),
-    FactorDefinition(
-        name="ORC_VOLUME_STABILITY_TREND_20",
-        family="volume_impact",
-        expression=(
-            "Mean($close/Ref($close,1)-1,20)"
-            "/(Std($volume,20)/(Mean($volume,20)+1e-12)+1e-12)"
-        ),
-        direction=1,
-        hypothesis=(
-            "A directional return trend achieved with stable, orderly volume is more sustainable than the same "
-            "trend delivered with unstable participation."
-        ),
-        lookback=20,
-    ),
-    FactorDefinition(
-        name="ORC_NET_VOLUME_PRESSURE_20",
-        family="price_volume_divergence",
-        expression=(
-            "(Sum(Greater($close,Ref($close,1))*$volume,20)"
-            "-Sum(Greater(Ref($close,1),$close)*$volume,20))"
-            "/(Sum($volume,20)+1e-12)"
-        ),
-        direction=1,
-        hypothesis=(
-            "Up-bar volume dominance over down-bar volume is a signed participation measure; positive net pressure "
-            "is expected to precede positive returns."
-        ),
-        lookback=20,
-    ),
-    FactorDefinition(
-        name="ORC_VOLUME_TREND_DIVERGENCE_10",
-        family="price_volume_divergence",
-        expression=(
-            "($close/Ref($close,10)-1)"
-            "*(1-$volume/(Mean(Ref($volume,1),10)+1e-12))"
-        ),
-        direction=-1,
-        hypothesis=(
-            "A 10-bar price move unsupported by current participation relative to its own 10-bar volume profile is "
-            "vulnerable to a symmetric reversal."
-        ),
-        lookback=10,
-    ),
-    FactorDefinition(
-        name="ORC_INTRADAY_RANGE_RETURN_10",
-        family="session_structure",
-        expression=(
-            "Mean(($close-$open)/$open,10)"
-            "/(Std(($close-$open)/$open,20)+1e-12)"
-        ),
-        direction=1,
-        hypothesis=(
-            "A stable positive intraday drift relative to the volatility of its own recent open-to-close moves "
-            "reflects persistent session-level buying pressure."
-        ),
-        lookback=20,
-    ),
 )
 
 
@@ -608,10 +513,24 @@ def validate_factor_definitions(
     return validated
 
 
-def select_factor_definitions(families: Iterable[str] | None = None) -> tuple[FactorDefinition, ...]:
+def select_factor_definitions(
+    families: Iterable[str] | None = None,
+    factor_names: Iterable[str] | None = None,
+) -> tuple[FactorDefinition, ...]:
     """Return a stable subset for family-level ablation experiments."""
 
     candidates = validate_factor_definitions()
+    if families is not None and factor_names is not None:
+        raise ValueError("families and factor_names are mutually exclusive")
+    if factor_names is not None:
+        requested_names = (factor_names,) if isinstance(factor_names, str) else tuple(dict.fromkeys(factor_names))
+        if not requested_names:
+            raise ValueError("at least one factor name is required")
+        by_name = {factor.name: factor for factor in candidates}
+        unknown_names = sorted(set(requested_names) - set(by_name))
+        if unknown_names:
+            raise ValueError(f"unknown factor names: {unknown_names}")
+        return validate_factor_definitions(by_name[name] for name in requested_names)
     if families is None:
         return candidates
     if isinstance(families, str):
@@ -627,10 +546,13 @@ def select_factor_definitions(families: Iterable[str] | None = None) -> tuple[Fa
     return validate_factor_definitions(selected)
 
 
-def factor_config(families: Iterable[str] | None = None) -> tuple[list[str], list[str]]:
+def factor_config(
+    families: Iterable[str] | None = None,
+    factor_names: Iterable[str] | None = None,
+) -> tuple[list[str], list[str]]:
     """Return Qlib ``(fields, names)`` lists for a loader configuration."""
 
-    selected = select_factor_definitions(families)
+    selected = select_factor_definitions(families, factor_names)
     return [factor.expression for factor in selected], [factor.name for factor in selected]
 
 
@@ -647,7 +569,10 @@ def _canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-def factor_catalog_manifest(families: Iterable[str] | None = None) -> dict[str, Any]:
+def factor_catalog_manifest(
+    families: Iterable[str] | None = None,
+    factor_names: Iterable[str] | None = None,
+) -> dict[str, Any]:
     """Return serializable, fingerprinted metadata for a run manifest.
 
     The digest covers the selected definitions, their stable ordering, and the
@@ -655,7 +580,7 @@ def factor_catalog_manifest(families: Iterable[str] | None = None) -> dict[str, 
     protocol therefore creates a different experimental catalog identity.
     """
 
-    selected = select_factor_definitions(families)
+    selected = select_factor_definitions(families, factor_names)
     payload = {
         "catalog_version": FACTOR_CATALOG_VERSION,
         "protocol": asdict(RESEARCH_PROTOCOL),
@@ -670,6 +595,7 @@ def factor_catalog_manifest(families: Iterable[str] | None = None) -> dict[str, 
 
 def combined_alpha158_feature_config(
     families: Iterable[str] | None = None,
+    factor_names: Iterable[str] | None = None,
 ) -> tuple[list[str], list[str]]:
     """Return Alpha158 followed by a validated original-candidate subset.
 
@@ -688,7 +614,7 @@ def combined_alpha158_feature_config(
             "rolling": {},
         }
     )
-    candidate_fields, candidate_names = factor_config(families)
+    candidate_fields, candidate_names = factor_config(families, factor_names)
     names = [*alpha_names, *candidate_names]
     duplicates = sorted({name for name in names if names.count(name) > 1})
     if duplicates:
@@ -705,6 +631,7 @@ def build_alpha158_factor_handler(
     fit_end_time: str | None = None,
     label: tuple[list[str], list[str]] | None = None,
     families: Iterable[str] | None = None,
+    factor_names: Iterable[str] | None = None,
     **handler_kwargs: Any,
 ):
     """Build an Alpha158-compatible handler with candidate columns appended.
@@ -716,7 +643,7 @@ def build_alpha158_factor_handler(
 
     from qlib.contrib.data.handler import Alpha158
 
-    fields, names = combined_alpha158_feature_config(families)
+    fields, names = combined_alpha158_feature_config(families, factor_names)
 
     class _Alpha158WithFrozenCandidates(Alpha158):
         def get_feature_config(self):

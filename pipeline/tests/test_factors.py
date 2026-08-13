@@ -100,6 +100,20 @@ class FactorDefinitionTests(unittest.TestCase):
         self.assertNotEqual(first["sha256"], subset["sha256"])
         self.assertTrue(all(item["family"] == "session_structure" for item in subset["factors"]))
 
+    def test_named_factor_selection_is_exact_ordered_and_mutually_exclusive(self):
+        names = [
+            ORIGINAL_RESEARCH_CANDIDATES[2].name,
+            ORIGINAL_RESEARCH_CANDIDATES[0].name,
+        ]
+        selected = select_factor_definitions(factor_names=names)
+        self.assertEqual([factor.name for factor in selected], names)
+        manifest = factor_catalog_manifest(factor_names=names)
+        self.assertEqual([factor["name"] for factor in manifest["factors"]], names)
+        with self.assertRaisesRegex(ValueError, "mutually exclusive"):
+            select_factor_definitions(["volume_impact"], names)
+        with self.assertRaisesRegex(ValueError, "unknown factor names"):
+            select_factor_definitions(factor_names=["ORC_DOES_NOT_EXIST"])
+
     def test_combined_config_preserves_alpha_order_and_only_appends_candidates(self):
         with fake_qlib_alpha158():
             fields, names = combined_alpha158_feature_config(["trend_crowding"])

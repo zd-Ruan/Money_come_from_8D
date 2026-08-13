@@ -74,7 +74,7 @@ class ReportChartTests(unittest.TestCase):
 
     def test_plus_original_mode_does_not_hide_a_missing_frozen_catalog(self):
         label, section = _factor_audit({}, {"features": {"mode": "alpha158_plus_original"}})
-        self.assertEqual(label, "Alpha158 + 原创因子（目录缺失）")
+        self.assertEqual(label, "Alpha158 + 原创研究候选（目录缺失）")
         self.assertEqual(section, "")
 
 
@@ -98,7 +98,12 @@ class GenerateReportTests(unittest.TestCase):
             "config.json",
             {
                 "report": {"title": "ETF 测试报告"},
-                "execution": {"commission_bps_per_side": 3},
+                "execution": {
+                    "commission_bps_per_side": 3,
+                    "standard_limit_ratio": 0.10,
+                    "wide_limit_ratio": 0.20,
+                    "price_tick": 0.001,
+                },
                 "data": {"benchmark": "SH510300"},
                 "rolling": {"purge_bars": 2},
                 "features": {
@@ -219,9 +224,15 @@ class GenerateReportTests(unittest.TestCase):
         self.assertIn("Rank IC / HAC t", document)
         self.assertIn("HAC t = 3.25", document)
         self.assertIn("HAC t = 4.50", document)
+        self.assertIn("计算 10%/20% 方向性涨跌停", document)
+        self.assertIn("否则按 10% 失败关闭", document)
+        self.assertIn("登记日冻结分红权利", document)
+        self.assertIn("发放日才成为可交易现金", document)
+        self.assertNotIn("现金分红等价为无摩擦再投资", document)
+        self.assertIn("日线回测不是订单簿仿真", document)
         self.assertNotIn("HAC t = 99.00", document)
         self.assertNotIn("HAC t = 98.00", document)
-        self.assertIn(f"Alpha158 + {len(self.factor_catalog['factors'])} 个冻结原创因子", document)
+        self.assertIn(f"Alpha158 + {len(self.factor_catalog['factors'])} 个冻结原创研究候选", document)
         self.assertIn("冻结因子目录", document)
         self.assertIn("trend_crowding", document)
         self.assertIn("ORC_TREND_PATH_CROWD_20", document)

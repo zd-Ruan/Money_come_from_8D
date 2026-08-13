@@ -20,10 +20,10 @@ dependencies = [
 
 [project.scripts]
 quant-pipeline = "quant_pipeline.cli:main"
+quant-pipeline-release = "quant_pipeline.release:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

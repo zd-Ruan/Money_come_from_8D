@@ -14,7 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from quant_pipeline.comparison import compare_completed_runs, generate_comparison_json
 from quant_pipeline.factors import factor_catalog_manifest
-from quant_pipeline.integrity import generate_artifact_checksums
+from quant_pipeline.integrity import (
+    combine_runtime_code_sha256,
+    generate_artifact_checksums,
+    generate_integrity_seal,
+)
 from quant_pipeline.io import sha256_file
 from quant_pipeline.metrics import independent_portfolio_performance
 
@@ -213,8 +217,22 @@ class ComparisonTests(unittest.TestCase):
 
     def _seal_run(self, run_dir):
         manifest = self._read_json(run_dir, "manifest.json")
-        manifest["code"] = {"source_tree_sha256": "c" * 64}
-        manifest["artifacts"] = {"artifact_checksums": "artifact_checksums.json"}
+        pipeline_digest = "c" * 64
+        qlib_digest = "d" * 64
+        manifest.setdefault(
+            "code",
+            {
+                "pipeline_source_sha256": pipeline_digest,
+                "qlib_package_sha256": qlib_digest,
+                "runtime_code_sha256": combine_runtime_code_sha256(
+                    pipeline_digest, qlib_digest
+                ),
+            },
+        )
+        manifest["artifacts"] = {
+            "artifact_checksums": "artifact_checksums.json",
+            "integrity_seal": "integrity_seal.json",
+        }
         self._write_json(run_dir, "manifest.json", manifest)
         checksum_path = generate_artifact_checksums(run_dir)
         checksum_payload = json.loads(checksum_path.read_text(encoding="utf-8"))
@@ -222,9 +240,11 @@ class ComparisonTests(unittest.TestCase):
             "checksum_manifest": checksum_path.name,
             "checksum_sha256": sha256_file(checksum_path),
             "artifact_count": len(checksum_payload["artifacts"]),
+            "seal_manifest": "integrity_seal.json",
             "verified": True,
         }
         self._write_json(run_dir, "manifest.json", manifest)
+        generate_integrity_seal(run_dir, checksum_path)
 
     def _read_json(self, run_dir, filename):
         return json.loads((run_dir / filename).read_text(encoding="utf-8"))
@@ -373,6 +393,7 @@ class ComparisonTests(unittest.TestCase):
         manifest = self._read_json(self.candidate, "manifest.json")
         manifest["data"]["source_fingerprint"] = "b" * 64
         self._write_json(self.candidate, "manifest.json", manifest)
+        self._seal_run(self.candidate)
         result = compare_completed_runs(self.baseline, self.candidate)
         self.assertEqual(result["status"], "incomparable")
         self.assertTrue(any("source_fingerprint differs" in reason for reason in result["reasons"]))
@@ -413,6 +434,7 @@ class ComparisonTests(unittest.TestCase):
         manifest = self._read_json(self.candidate, "manifest.json")
         manifest["factor_catalog"]["factors"][0]["direction"] *= -1
         self._write_json(self.candidate, "manifest.json", manifest)
+        self._seal_run(self.candidate)
         result = compare_completed_runs(self.baseline, self.candidate)
         self.assertEqual(result["status"], "incomparable")
         self.assertTrue(any("sha256 does not match" in reason for reason in result["reasons"]))
@@ -459,19 +481,32 @@ class ComparisonTests(unittest.TestCase):
         self.assertEqual(result["status"], "incomparable")
         self.assertTrue(any("checksum manifest SHA-256" in reason for reason in result["reasons"]))
 
-    def test_source_tree_hash_must_be_valid_and_equal(self):
+    def test_runtime_code_hash_must_be_valid_consistent_and_equal(self):
         manifest = self._read_json(self.candidate, "manifest.json")
-        manifest["code"]["source_tree_sha256"] = "d" * 64
+        manifest["code"]["qlib_package_sha256"] = "e" * 64
+        manifest["code"]["runtime_code_sha256"] = combine_runtime_code_sha256(
+            manifest["code"]["pipeline_source_sha256"],
+            manifest["code"]["qlib_package_sha256"],
+        )
         self._write_json(self.candidate, "manifest.json", manifest)
+        self._seal_run(self.candidate)
         result = compare_completed_runs(self.baseline, self.candidate)
         self.assertEqual(result["status"], "incomparable")
-        self.assertIn("code.source_tree_sha256 differs", result["reasons"])
+        self.assertIn("code.runtime_code_sha256 differs", result["reasons"])
 
-        manifest["code"]["source_tree_sha256"] = "not-a-digest"
+        manifest["code"]["runtime_code_sha256"] = "not-a-digest"
         self._write_json(self.candidate, "manifest.json", manifest)
+        self._seal_run(self.candidate)
         result = compare_completed_runs(self.baseline, self.candidate)
         self.assertEqual(result["status"], "incomparable")
         self.assertTrue(any("64-character hexadecimal" in reason for reason in result["reasons"]))
+
+        manifest["code"]["runtime_code_sha256"] = "f" * 64
+        self._write_json(self.candidate, "manifest.json", manifest)
+        self._seal_run(self.candidate)
+        result = compare_completed_runs(self.baseline, self.candidate)
+        self.assertEqual(result["status"], "incomparable")
+        self.assertTrue(any("does not match its components" in reason for reason in result["reasons"]))
 
     def test_json_generation_does_not_overwrite_completed_result_by_default(self):
         comparisons = Path(self.temporary_directory.name) / "comparisons"
@@ -515,7 +550,7 @@ class ComparisonTests(unittest.TestCase):
         self._write_json(self.candidate, "manifest.json", manifest)
         result = compare_completed_runs(self.baseline, self.candidate)
         self.assertEqual(result["status"], "incomparable")
-        self.assertTrue(any("not completed" in reason for reason in result["reasons"]))
+        self.assertTrue(any("manifest.json" in reason for reason in result["reasons"]))
 
     def test_manifest_runtime_metadata_is_not_an_experimental_condition(self):
         baseline = self._read_json(self.baseline, "manifest.json")
@@ -524,6 +559,8 @@ class ComparisonTests(unittest.TestCase):
         candidate.update({"git": {"commit": "new"}, "environment": {"qlib": "new"}})
         self._write_json(self.baseline, "manifest.json", baseline)
         self._write_json(self.candidate, "manifest.json", candidate)
+        self._seal_run(self.baseline)
+        self._seal_run(self.candidate)
         result = compare_completed_runs(self.baseline, self.candidate)
         self.assertEqual(result["status"], "improved")
 

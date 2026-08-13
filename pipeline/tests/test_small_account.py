@@ -14,6 +14,7 @@ from quant_pipeline.small_account import (
     QLIB_BACKTEST_API,
     LinearCostModel,
     SmallAccountExchange,
+    infer_daily_price_limit_flags,
     records_from_qlib_execute_results,
     records_from_qlib_order_indicators,
     summarize_execution_records,
@@ -177,6 +178,205 @@ class SmallAccountExchangeTests(unittest.TestCase):
         self.assertEqual(record.target_notional, 1_000.0)
         self.assertEqual(record.fill_notional, 0.0)
         self.assertEqual(record.total_cost, 0.0)
+
+
+class PriceLimitInferenceTests(unittest.TestCase):
+    @staticmethod
+    def infer(rows):
+        frame = pd.DataFrame(rows)
+        return infer_daily_price_limit_flags(
+            previous_raw_close=frame["previous_raw_close"],
+            current_raw_close=frame["current_raw_close"],
+            raw_high=frame["raw_high"],
+            raw_low=frame["raw_low"],
+            current_factor=frame["current_factor"],
+            previous_factor=frame["previous_factor"],
+            suspended=frame["suspended"],
+        )
+
+    def test_tick_rounded_9_9x_percent_limits_are_blocked_directionally(self):
+        flags = self.infer(
+            [
+                {
+                    "previous_raw_close": 2.482,
+                    "current_raw_close": 2.234,
+                    "raw_high": 2.482,
+                    "raw_low": 2.234,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+                {
+                    "previous_raw_close": 1.754,
+                    "current_raw_close": 1.929,
+                    "raw_high": 1.929,
+                    "raw_low": 1.754,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+            ]
+        )
+        self.assertTrue(flags.loc[0, "limit_sell"])
+        self.assertFalse(flags.loc[0, "limit_buy"])
+        self.assertTrue(flags.loc[1, "limit_buy"])
+        self.assertFalse(flags.loc[1, "limit_sell"])
+        self.assertFalse(flags["wide_tier_proven"].any())
+
+    def test_intraday_range_proves_twenty_percent_tier_without_future_metadata(self):
+        flags = self.infer(
+            [
+                {
+                    "previous_raw_close": 1.153,
+                    "current_raw_close": 1.384,
+                    "raw_high": 1.384,
+                    "raw_low": 1.125,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+                {
+                    "previous_raw_close": 1.000,
+                    "current_raw_close": 1.000,
+                    "raw_high": 1.120,
+                    "raw_low": 0.990,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+            ]
+        )
+        self.assertTrue(flags.loc[0, "wide_tier_proven"])
+        self.assertTrue(flags.loc[0, "limit_buy"])
+        self.assertTrue(flags.loc[1, "wide_tier_proven"])
+        self.assertFalse(flags.loc[1, "limit_buy"])
+
+    def test_ambiguous_twenty_percent_day_fails_closed_at_ten_percent(self):
+        flags = self.infer(
+            [
+                {
+                    "previous_raw_close": 1.000,
+                    "current_raw_close": 1.100,
+                    "raw_high": 1.100,
+                    "raw_low": 0.990,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                }
+            ]
+        )
+        self.assertFalse(flags.loc[0, "wide_tier_proven"])
+        self.assertTrue(flags.loc[0, "limit_buy"])
+
+    def test_half_tick_rounds_up_and_corporate_action_blocks_both_sides(self):
+        flags = self.infer(
+            [
+                {
+                    "previous_raw_close": 1.005,
+                    "current_raw_close": 1.105,
+                    "raw_high": 1.105,
+                    "raw_low": 1.000,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+                {
+                    "previous_raw_close": 1.000,
+                    "current_raw_close": 1.000,
+                    "raw_high": 1.010,
+                    "raw_low": 0.990,
+                    "current_factor": 1.01,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+            ]
+        )
+        self.assertFalse(flags.loc[0, "limit_buy"])
+        self.assertTrue(flags.loc[1, "corporate_action_block"])
+        self.assertTrue(flags.loc[1, "limit_buy"])
+        self.assertTrue(flags.loc[1, "limit_sell"])
+
+    def test_float32_tick_noise_is_accepted_but_material_off_tick_price_is_blocked(self):
+        flags = self.infer(
+            [
+                {
+                    "previous_raw_close": 1.152999997138977,
+                    "current_raw_close": 1.3840000629425049,
+                    "raw_high": 1.3840000629425049,
+                    "raw_low": 1.125,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+                {
+                    "previous_raw_close": 1.0004,
+                    "current_raw_close": 1.000,
+                    "raw_high": 1.010,
+                    "raw_low": 0.990,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+            ]
+        )
+        self.assertFalse(flags.loc[0, "invalid_reference_block"])
+        self.assertTrue(flags.loc[0, "wide_tier_proven"])
+        self.assertTrue(flags.loc[1, "invalid_reference_block"])
+        self.assertTrue(flags.loc[1, "limit_buy"])
+        self.assertTrue(flags.loc[1, "limit_sell"])
+
+    def test_intraday_touch_does_not_block_a_close_away_from_the_limit(self):
+        flags = self.infer(
+            [
+                {
+                    "previous_raw_close": 1.000,
+                    "current_raw_close": 1.050,
+                    "raw_high": 1.100,
+                    "raw_low": 0.990,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+                {
+                    "previous_raw_close": 1.000,
+                    "current_raw_close": 0.950,
+                    "raw_high": 1.010,
+                    "raw_low": 0.900,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+            ]
+        )
+        self.assertFalse(flags.loc[0, "limit_buy"])
+        self.assertFalse(flags.loc[1, "limit_sell"])
+
+    def test_wide_tier_is_proven_by_range_but_close_controls_the_rejection(self):
+        flags = self.infer(
+            [
+                {
+                    "previous_raw_close": 1.000,
+                    "current_raw_close": 1.100,
+                    "raw_high": 1.120,
+                    "raw_low": 0.990,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+                {
+                    "previous_raw_close": 1.000,
+                    "current_raw_close": 1.200,
+                    "raw_high": 1.200,
+                    "raw_low": 0.990,
+                    "current_factor": 1.0,
+                    "previous_factor": 1.0,
+                    "suspended": False,
+                },
+            ]
+        )
+        self.assertTrue(flags["wide_tier_proven"].all())
+        self.assertFalse(flags.loc[0, "limit_buy"])
+        self.assertTrue(flags.loc[1, "limit_buy"])
 
 
 class ExecutionStatisticsTests(unittest.TestCase):

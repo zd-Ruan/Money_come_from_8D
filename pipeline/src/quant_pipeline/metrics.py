@@ -20,6 +20,7 @@ def annualized_return(returns: pd.Series, periods: int = 252) -> float:
 
 def max_drawdown(returns: pd.Series) -> float:
     wealth = (1.0 + returns.fillna(0.0)).cumprod()
+    wealth = pd.concat([pd.Series([1.0]), wealth.reset_index(drop=True)], ignore_index=True)
     return float((wealth / wealth.cummax() - 1.0).min())
 
 

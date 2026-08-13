@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "policy_version": "historical_exposure_registry_v1",
+  "known_through_session": "2026-08-11",
+  "exposure_recorded_at": "2026-08-13T01:20:59+08:00",
+  "evidence": {
+    "git_commit": {
+      "commit_oid": "3ef39ff628e1e0471653da9717c26cb77194bc85",
+      "subject": "feat: add overnight ORC factor research and CPU paired comparisons"
+    },
+    "data_snapshot": {
+      "snapshot_id": "20260811-2a82246e51e9",
+      "source_fingerprint": "2a82246e51e9303b35739a8e7d33f59bdfe884367bf4b6be49d4aac948bea694",
+      "calendar_end": "2026-08-11"
+    },
+    "published_research": {
+      "last_realized_signal_date": "2026-08-07",
+      "portfolio_evaluation_end": "2026-08-11",
+      "run_ids": [
+        "baseline_cpu_20260813",
+        "candidate_trend_crowding_cpu_20260813",
+        "candidate_volume_impact_cpu_20260813",
+        "candidate_price_volume_divergence_cpu_20260813",
+        "candidate_session_structure_cpu_20260813"
+      ],
+      "comparison_artifacts": [
+        "baseline_cpu_20260813__vs__candidate_trend_crowding_cpu_20260813.json",
+        "baseline_cpu_20260813__vs__candidate_volume_impact_cpu_20260813.json",
+        "baseline_cpu_20260813__vs__candidate_price_volume_divergence_cpu_20260813.json",
+        "baseline_cpu_20260813__vs__candidate_session_structure_cpu_20260813.json"
+      ],
+      "summary_artifact": "pipeline/comparisons/RESEARCH_SUMMARY_20260813.md"
+    }
+  },
+  "policy": {
+    "on_or_before_known_through": "retrospective_exposed",
+    "exposed_claim_classification": "research_only",
+    "promotion_allowed_for_retrospective_exposed": false,
+    "prospective_requirement": "stage start must be after known_through_session and specification_frozen_at must precede stage start"
+  },
+  "registry_sha256": "9806baa6d566cdc90748897420be189dcc53033e5bdfd46bf68740f97c2cb5e2"
+}

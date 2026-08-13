@@ -1,50 +1,79 @@
-# My Quant Pipeline
+# My Quant ETF Pipeline
 
-这是围绕现有 Qlib 数据和 Alpha158 构建的独立 ETF 研究 Pipeline。Qlib 仓库、行情数据和已有 MLflow 记录均保留不动。
+这是在现有 Qlib 仓库内独立维护的 ETF 研究 Pipeline。Qlib 继续负责复权特征、标签和模型信号；最终组合收益由原始价格、真实份额和人民币现金账本计算。旧 Qlib 数据、旧实验和 Qlib 源码均保留。
 
-## 可信度设计
+## 适用边界
 
-- 原始数据、ETF 白名单、交易日历和特征文件生成版本化指纹；
-- 上游 `validation_report.json` 纳入指纹和门禁；目录中保留的池外缓存会被单独统计，但不会混入 `t1_etf` 训练池；
-- 训练、验证、测试之间按交易日执行 purge；
-- 每个滚动窗口使用三个固定随机种子的 LightGBM 集成；
-- 所有预测均为严格样本外预测，拼接后只执行一次连续回测；
-- 回测只按最后一个已完整实现收益的信号日期截断；日期内不会用未来标签是否存在筛选 ETF，最新未实现日期的信号只保存、不计绩效；
-- 回测包含 T+1、停牌、涨跌停、佣金、滑点和每日 5% 成交量上限；
-- 自动执行多档滑点压力测试、统计显著性、折叠级组合超额与回撤门禁；
-- 只有模型、回测、门禁和网页报告全部成功落盘，运行才会标记为 `completed`；
-- 当前时点 ETF 池在历史回测中存在幸存者偏差，因此系统会自动标记为 `research_only`；
-- 网页只读取冻结产物，不在浏览器重新计算核心指标。
+- 初始资金固定为人民币 20,000 元。
+- 当前 ETF 池是 2026-08-12 的现时快照，历史回测存在幸存者偏差，结果只能标记为 `research_only`，不能直接作为实盘收益承诺。
+- GitHub 已有研究在 2026-08-13 前查看过截至 2026-08-11 的完整历史结果。因此，本轮所有覆盖该日期的发现、确认和留出阶段都强制标记为 `retrospective_exposed`；一次性状态账本只能防止重复运行，不能把已经看过的历史重新变成盲测。
+- 真正的前向验证只能使用候选规格冻结后、2026-08-13 起新增且此前未查看的数据。至少积累完整的标签成熟期和 63 个新交易日后，才有资格执行一次前向确认；在此之前禁止实盘晋级。
+- 18 个新增特征是“原创研究候选”。这表示它们为本项目独立构造并预注册，不表示市场上从未出现过经济含义相似的信号。
+- 回测不是撮合所仿真。停牌、涨跌停和成交量限制只能根据日线公开数据保守重建；实盘前仍需仿真盘、券商接口核对和小额前向验证。
 
-## 命令
+## 可靠性口径
 
-在 `My_Quant` 目录运行，使用已安装 Qlib 的 Python 环境：
+- 信号在 T 日收盘后生成，T+1 收盘执行，标签为 T+1 到 T+2 收益。
+- 训练、验证、发现、确认和锁定留出之间按交易日隔离，并为标签成熟保留 2 个交易日。
+- 最终账本使用未复权 OHLC、真实份额和人民币现金，不调用 Qlib 的一千万元默认账户回测。
+- 双边佣金 3 bp、每笔最低 5 元；滑点单独计算；100 份整手；单日成交不超过公开成交量的 5%。
+- 买入后至少持有 5 个交易日；停牌、涨跌停、冻结卖出和零成交均留下逐单记录，失败订单不会由低排名 ETF 替补。
+- 分红在登记日冻结权利，除息日成为应收并计入净值，发放日才转为可用现金；份额折算直接更新真实份额。
+- 公司行动原文、事件表、原始行情、Qlib 特征和逐文件 SHA-256 清单共同进入不可变数据快照。
+- 每次运行保存配置、代码版本、环境、模型、预测、持仓、逐单成交、公司行动账本、压力测试、门禁结果及离线 HTML 报告。
+
+## 正式运行顺序
+
+在仓库外层 `My_Quant` 目录运行，并使用已安装 Qlib 的环境：
 
 ```powershell
-$env:PYTHONPATH = (Resolve-Path pipeline/src).Path
+$env:PYTHONPATH = (Resolve-Path .\qlib\pipeline\src).Path
 
-# 数据审计和快照
-C:\Exception\quant\python.exe -m quant_pipeline.cli audit
+# 1. 更新冻结 ETF 池行情，不改变 universe.csv
+C:\Exception\quant\python.exe .\qlib\scripts\data_collector\cn_etf\collector.py download `
+  --data-dir .\qlib\data\cn_etf --frozen-universe --history-source sina `
+  --end 2026-08-12 --workers 8
 
-# 完整滚动训练、压力回测、质量门禁和报告
-C:\Exception\quant\python.exe -m quant_pipeline.cli run
+# 2. 低频、可续跑地采集全池公司行动
+C:\Exception\quant\python.exe .\qlib\scripts\data_collector\cn_etf\collector.py actions `
+  --data-dir .\qlib\data\cn_etf --workers 1 --request-delay-seconds 1.5 --attempts 7
 
-# 网页看板
-C:\Exception\quant\python.exe -m quant_pipeline.cli serve --port 8765
+# 3. 清洗、严格验证，并写入新的版本化 Qlib 目录
+C:\Exception\quant\python.exe .\qlib\scripts\data_collector\cn_etf\collector.py normalize `
+  --data-dir .\qlib\data\cn_etf --workers 8
+C:\Exception\quant\python.exe .\qlib\scripts\data_collector\cn_etf\collector.py validate `
+  --data-dir .\qlib\data\cn_etf --expected-end 2026-08-12 --max-stale-days 0
+C:\Exception\quant\python.exe .\qlib\scripts\data_collector\cn_etf\collector.py dump `
+  --data-dir .\qlib\data\cn_etf --qlib-dir .\qlib\data\cn_etf\qlib_data_20260812 --workers 8
+
+# 4. 数据审计通过后才允许训练
+C:\Exception\quant\python.exe -m quant_pipeline.cli audit `
+  --config .\qlib\pipeline\configs\baseline.yaml
+C:\Exception\quant\python.exe -m quant_pipeline.cli run `
+  --config .\qlib\pipeline\configs\baseline.yaml
 ```
 
-网页地址：`http://127.0.0.1:8765`
+预注册因子研究先用 `research init` 冻结交易日分区、基础配置、24 个发现期实验规格和一次性状态账本。发现期包含 1 个 Alpha158 基线、5 个因子族和 18 个单因子实验；18 个正式假设使用 Benjamini-Hochberg `q=0.10`。通过者作为一个不可变候选进入一次确认；确认失败则锁定留出不会打开。固定的 `research/exposure_registry.json` 会把已公开研究的截止日和证据提交绑定到计划、请求、状态、运行清单、结果与网页；删除、改写或伪造为未见数据都会失败关闭。
 
-配置入口为 `configs/baseline.yaml`。以后研究新因子时，应复制配置建立新的实验基线，不直接修改已经完成的运行目录。
+## 网页可视化
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path .\qlib\pipeline\src).Path
+C:\Exception\quant\python.exe -m quant_pipeline.cli serve --host 127.0.0.1 --port 8765
+```
+
+访问 `http://127.0.0.1:8765`。网页只读取已经冻结并通过校验的产物，不在浏览器内重算核心指标。
 
 ## 目录
 
 ```text
 pipeline/
   configs/       版本化实验配置
-  snapshots/     数据与 ETF 池快照
-  runs/          不可变运行产物
-  src/           Pipeline、回测、门禁和网页代码
-  tests/         关键口径测试
-  registry.json  实验索引
+  research/      预注册计划、一次性状态和阶段产物
+  snapshots/     数据指纹、逐文件哈希与冻结池元数据
+  runs/          模型、预测、账本、门禁和 HTML 报告
+  comparisons/   严格配对比较结果
+  src/           Pipeline、回测、研究协议和网页代码
+  tests/         关键行为与失败关闭测试
+  registry.json  已完成实验索引
 ```
