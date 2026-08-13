@@ -77,6 +77,11 @@ class ReportChartTests(unittest.TestCase):
         self.assertEqual(label, "Alpha158 + 原创研究候选（目录缺失）")
         self.assertEqual(section, "")
 
+    def test_alpha360_mode_is_reported_without_an_original_factor_catalog(self):
+        label, section = _factor_audit({}, {"features": {"mode": "alpha360", "families": []}})
+        self.assertEqual(label, "Alpha360")
+        self.assertEqual(section, "")
+
 
 class GenerateReportTests(unittest.TestCase):
     def setUp(self):

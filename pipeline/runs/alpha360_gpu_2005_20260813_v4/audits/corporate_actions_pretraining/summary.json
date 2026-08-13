@@ -1,0 +1,17 @@
+{
+  "audit_passed": true,
+  "material_factor_jump_count": 851,
+  "corporate_action_count": 851,
+  "matched_event_count": 851,
+  "missing_action_count": 0,
+  "extra_action_count": 0,
+  "identity_mismatch_count": 0,
+  "presence_only_count": 0,
+  "identity_verified_count": 851,
+  "raw_price_identity_requested": true,
+  "factor_start_date": "2005-02-23",
+  "factor_end_date": "2026-08-11",
+  "rtol": 1e-10,
+  "atol": 1e-12,
+  "economic_scope": "standard ex-right adjustment identity checked; legal holding return is a separate diagnostic"
+}

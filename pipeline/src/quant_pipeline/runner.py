@@ -73,6 +73,14 @@ def _sanitize_workspace_text(value: str, workspace: Path) -> str:
     return value.replace(str(workspace), "<workspace>").replace(workspace.as_posix(), "<workspace>")
 
 
+def _qlib_manifest_version(environment: dict[str, Any], qlib_module: Any) -> str:
+    installed = environment.get("packages", {}).get("pyqlib")
+    if isinstance(installed, str) and installed:
+        return installed
+    source_version = getattr(qlib_module, "__version__", None)
+    return str(source_version) if source_version else "source-checkout"
+
+
 def backtest_bounds(calendar: pd.DatetimeIndex, first_signal_date: str, last_signal_date: str) -> tuple[str, str]:
     """Return initial close-execution date and final realization date."""
     start = shift_session(calendar, first_signal_date, 1)
@@ -1483,9 +1491,12 @@ def run_pipeline(
     write_json_atomic(manifest_path, manifest)
 
     try:
-        environment = validate_locked_environment()
-        environment_lock_path = run_dir / DEFAULT_ENVIRONMENT_LOCK.name
-        shutil.copy2(DEFAULT_ENVIRONMENT_LOCK, environment_lock_path)
+        configured_environment_lock = Path(
+            config["paths"].get("environment_lock", DEFAULT_ENVIRONMENT_LOCK)
+        ).resolve()
+        environment = validate_locked_environment(configured_environment_lock)
+        environment_lock_path = run_dir / configured_environment_lock.name
+        shutil.copy2(configured_environment_lock, environment_lock_path)
         if sha256_file(environment_lock_path) != environment["lock"]["sha256"]:
             raise RuntimeError("environment lock changed while the run was starting")
         validate_lightgbm_device(config)
@@ -1542,6 +1553,10 @@ def run_pipeline(
                 families=selected_families,
                 factor_names=selected_factor_names,
             )
+        elif feature_mode == "alpha360":
+            from qlib.contrib.data.handler import Alpha360
+
+            handler = Alpha360(**handler_kwargs)
         else:
             handler = Alpha158(**handler_kwargs)
         dataset = DatasetH(handler=handler, segments={})
@@ -1829,7 +1844,9 @@ def run_pipeline(
                     f"{environment['python']['version']}"
                 ),
                 "platform": environment["platform"],
-                "qlib": environment["packages"]["pyqlib"],
+                # A source checkout has no installed ``pyqlib`` distribution
+                # metadata. Its runtime tree is still content-hashed above.
+                "qlib": _qlib_manifest_version(environment, qlib),
                 "lightgbm": environment["packages"]["lightgbm"],
                 "packages": environment["packages"],
                 "lock": environment["lock"],

@@ -261,6 +261,8 @@ def _signal_hac(metrics: dict[str, Any], name: str) -> tuple[Any, str]:
 def _factor_audit(manifest: dict[str, Any], config: dict[str, Any]) -> tuple[str, str]:
     features = config.get("features", {}) if isinstance(config.get("features"), dict) else {}
     mode = features.get("mode", "alpha158")
+    if mode == "alpha360":
+        return "Alpha360", ""
     if mode != "alpha158_plus_original":
         return "Alpha158", ""
     catalog = manifest.get("factor_catalog")

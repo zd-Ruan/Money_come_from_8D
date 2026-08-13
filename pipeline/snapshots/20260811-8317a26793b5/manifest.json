@@ -1,0 +1,136 @@
+{
+  "generated_at": "2026-08-13T21:50:26.703448+08:00",
+  "snapshot_id": "20260811-8317a26793b5",
+  "source_fingerprint": "8317a26793b5c47cb46a375f7af7395f46cd2d3e7e575084e21f4caa24b71fc7",
+  "audit_identity": {
+    "schema_version": "6",
+    "configured_end": "2026-08-11",
+    "universe_mode": "current_snapshot"
+  },
+  "data_valid": true,
+  "promotion_eligible": false,
+  "universe_mode": "current_snapshot",
+  "counts": {
+    "universe": 1438,
+    "instruments": 1438,
+    "feature_directories": 1438,
+    "feature_files": 17256,
+    "raw_files_total": 1441,
+    "normalized_files_total": 1441,
+    "pool_external_raw_symbols": 3,
+    "pool_external_normalized_symbols": 3,
+    "corporate_action_events": 854,
+    "corporate_action_source_files": 1438
+  },
+  "calendar": {
+    "start": "2005-02-23",
+    "end": "2026-08-11",
+    "requested_end": "2026-08-11",
+    "sessions": 5095,
+    "future_boundary": "2026-08-12"
+  },
+  "coverage": {
+    "missing_in_instruments": [],
+    "extra_in_instruments": [],
+    "missing_feature_dirs": [],
+    "missing_raw": [],
+    "missing_normalized": [],
+    "provider_features": {
+      "required_fields": [
+        "open",
+        "close",
+        "high",
+        "low",
+        "volume",
+        "factor",
+        "change",
+        "amount",
+        "vwap",
+        "amount_estimated",
+        "paused"
+      ],
+      "missing_fields": {},
+      "malformed_files": [],
+      "inconsistent_length_symbols": [],
+      "interval_mismatch_symbols": [],
+      "validated_symbols": 1438
+    }
+  },
+  "upstream_validation": {
+    "generated_at": "2026-08-12T23:52:24.6869696+08:00",
+    "training_ready": false,
+    "issue_count": 2,
+    "reported_amount_ratio": 0.0,
+    "whitelist_scoped_ready": true
+  },
+  "corporate_actions": {
+    "report_rows": 1438,
+    "events": 854,
+    "source_cache_files": 1438,
+    "complete_universe": true
+  },
+  "source_inventory": {
+    "path": "source_inventory.json",
+    "file_count": 21577,
+    "sha256": "c47f0f1b7ab47b54c5c0536634e22bb268643b7e375496180c359389487c58e4"
+  },
+  "frozen_controls": {
+    "files": [
+      {
+        "scope": "data",
+        "source_path": "corporate_action_report.csv",
+        "snapshot_path": "corporate_action_report.csv",
+        "size": 123725,
+        "sha256": "647c000a25db5c6c27a6f151ad85cb0bf3aa8f2e9f9f26e3e8d752b28a46174e"
+      },
+      {
+        "scope": "data",
+        "source_path": "corporate_actions.csv",
+        "snapshot_path": "corporate_actions.csv",
+        "size": 200687,
+        "sha256": "a77027752e911f6814e6c071ebcd25633c456a73649cb9158017e3440e5c97bd"
+      },
+      {
+        "scope": "data",
+        "source_path": "trainable_universe_2015.csv",
+        "snapshot_path": "trainable_universe_2015.csv",
+        "size": 277689,
+        "sha256": "e9e6839fee7f451a996e82836693dfdc2064630a59340607f4bc365a75725a90"
+      },
+      {
+        "scope": "data",
+        "source_path": "validation_trainable_2015.json",
+        "snapshot_path": "validation_trainable_2015.json",
+        "size": 759,
+        "sha256": "7b4db7b9ac925cffa82347eb0aa736d02c2525c4c9ae5979276b085c66dd4402"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "calendars/day.txt",
+        "snapshot_path": "day.txt",
+        "size": 61140,
+        "sha256": "bbde0de08f1284137f9f8ca49f91d15469e733f37f3c054f255726cc23c2f35e"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "calendars/day_future.txt",
+        "snapshot_path": "day_future.txt",
+        "size": 61152,
+        "sha256": "8846f6e3e0bdcc857c12bd0c6ecb417aaa1954cca4b14b7259a5e18127f9c5d0"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "instruments/t1_etf.txt",
+        "snapshot_path": "t1_etf.txt",
+        "size": 46016,
+        "sha256": "1f39480012097fca70916b6199c1c8306310e89d05acb6df2ea70e17fa0c4ac2"
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "warnings": [
+    "upstream total-file count warnings are fully explained by retained pool-external cache files; per-symbol whitelist coverage was verified separately",
+    "current ETF snapshot is backfilled through history; survivor bias remains"
+  ],
+  "manifest_sha256": "4f33025246c8a2cc16f304f8b5f2bac2755052091eaf3cc8fabe3538eecc2992"
+}

@@ -1,0 +1,135 @@
+{
+  "generated_at": "2026-08-13T22:29:26.735347+08:00",
+  "snapshot_id": "20260811-12975e92fa3b",
+  "source_fingerprint": "12975e92fa3bc8f1672a156d8d5efc76b529654f8ddac44c061dae76319660e9",
+  "audit_identity": {
+    "schema_version": "6",
+    "configured_end": "2026-08-11",
+    "universe_mode": "current_snapshot"
+  },
+  "data_valid": true,
+  "promotion_eligible": false,
+  "universe_mode": "current_snapshot",
+  "counts": {
+    "universe": 1438,
+    "instruments": 1438,
+    "feature_directories": 1438,
+    "feature_files": 15818,
+    "raw_files_total": 1441,
+    "normalized_files_total": 1441,
+    "pool_external_raw_symbols": 3,
+    "pool_external_normalized_symbols": 3,
+    "corporate_action_events": 854,
+    "corporate_action_source_files": 1438
+  },
+  "calendar": {
+    "start": "2005-02-23",
+    "end": "2026-08-11",
+    "requested_end": "2026-08-11",
+    "sessions": 5218,
+    "future_boundary": "2026-08-12"
+  },
+  "coverage": {
+    "missing_in_instruments": [],
+    "extra_in_instruments": [],
+    "missing_feature_dirs": [],
+    "missing_raw": [],
+    "missing_normalized": [],
+    "provider_features": {
+      "required_fields": [
+        "open",
+        "close",
+        "high",
+        "low",
+        "volume",
+        "factor",
+        "change",
+        "amount",
+        "vwap",
+        "amount_estimated",
+        "paused"
+      ],
+      "missing_fields": {},
+      "malformed_files": [],
+      "inconsistent_length_symbols": [],
+      "interval_mismatch_symbols": [],
+      "validated_symbols": 1438
+    }
+  },
+  "upstream_validation": {
+    "generated_at": "2026-08-13T22:18:59.411146+08:00",
+    "training_ready": true,
+    "issue_count": 0,
+    "reported_amount_ratio": 0.0,
+    "whitelist_scoped_ready": true
+  },
+  "corporate_actions": {
+    "report_rows": 1438,
+    "events": 854,
+    "source_cache_files": 1438,
+    "complete_universe": true
+  },
+  "source_inventory": {
+    "path": "source_inventory.json",
+    "file_count": 20139,
+    "sha256": "0388356694eb0e73ce2e22298fd12f769ac0442f2d220ba4fb5894a25a766066"
+  },
+  "frozen_controls": {
+    "files": [
+      {
+        "scope": "data",
+        "source_path": "corporate_action_report.csv",
+        "snapshot_path": "corporate_action_report.csv",
+        "size": 123725,
+        "sha256": "647c000a25db5c6c27a6f151ad85cb0bf3aa8f2e9f9f26e3e8d752b28a46174e"
+      },
+      {
+        "scope": "data",
+        "source_path": "corporate_actions.csv",
+        "snapshot_path": "corporate_actions.csv",
+        "size": 200687,
+        "sha256": "a77027752e911f6814e6c071ebcd25633c456a73649cb9158017e3440e5c97bd"
+      },
+      {
+        "scope": "data",
+        "source_path": "trainable_universe_2015.csv",
+        "snapshot_path": "trainable_universe_2015.csv",
+        "size": 277689,
+        "sha256": "e9e6839fee7f451a996e82836693dfdc2064630a59340607f4bc365a75725a90"
+      },
+      {
+        "scope": "data",
+        "source_path": "validation_alpha360_2005.json",
+        "snapshot_path": "validation_alpha360_2005.json",
+        "size": 614,
+        "sha256": "38e7106885220f0521f77c280a9f72ab6c580b8f1a119c153cfe86c3797064e1"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "calendars/day.txt",
+        "snapshot_path": "day.txt",
+        "size": 62616,
+        "sha256": "e3c186f82faa5aa3d4e52a72ec49eada45619d516c3bf9f2ba4bd1a57d3263df"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "calendars/day_future.txt",
+        "snapshot_path": "day_future.txt",
+        "size": 57409,
+        "sha256": "3a913aa9a0529b408b659d2d95132de2bf7e566b51d99d4371a56800b83c49d3"
+      },
+      {
+        "scope": "qlib_provider",
+        "source_path": "instruments/t1_etf.txt",
+        "snapshot_path": "t1_etf.txt",
+        "size": 46016,
+        "sha256": "1f39480012097fca70916b6199c1c8306310e89d05acb6df2ea70e17fa0c4ac2"
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "warnings": [
+    "current ETF snapshot is backfilled through history; survivor bias remains"
+  ],
+  "manifest_sha256": "e3e39758342c2f96e1ac8ae563834a01ddffa7269c708272643d52b0591d64d7"
+}

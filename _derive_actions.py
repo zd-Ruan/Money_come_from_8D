@@ -9,7 +9,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts" / "data_collector" / "cn_etf"))
 import collector
 
-DATA = Path(r"C:\Users\zhendong ruan\Downloads\Code\My_Quant\qlib\data\cn_etf")
+DATA = Path(__file__).resolve().parent / "data" / "cn_etf"
 CACHE = DATA / "corporate_action_cache"
 CACHE.mkdir(parents=True, exist_ok=True)
 SINA_HFQ_URL = "https://finance.sina.com.cn/realstock/company/{symbol}/hfq.js"

@@ -14,7 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from quant_pipeline.runner import (
     _cost_only_stress_report,
+    _load_factor_tables,
     _model_params,
+    _qlib_manifest_version,
     _run_research_backtest_folds,
     _seal_completed_run,
     _sanitize_workspace_text,
@@ -35,9 +37,23 @@ from quant_pipeline.io import sha256_file
 from quant_pipeline.windows import RollingFold
 
 
+class _SourceQlib:
+    __version__ = "0.1.dev1"
+
+
 class RunnerTests(unittest.TestCase):
     def setUp(self):
         self.calendar = pd.bdate_range("2026-01-05", periods=10)
+
+    def test_source_qlib_version_is_recorded_without_distribution_metadata(self):
+        self.assertEqual(
+            _qlib_manifest_version({"packages": {"lightgbm": "4.6.0"}}, _SourceQlib),
+            "0.1.dev1",
+        )
+        self.assertEqual(
+            _qlib_manifest_version({"packages": {"pyqlib": "1.2.0"}}, _SourceQlib),
+            "1.2.0",
+        )
 
     def test_backtest_cutoff_does_not_filter_instruments_by_future_label(self):
         index = pd.MultiIndex.from_tuples(
@@ -509,6 +525,9 @@ class RunnerTests(unittest.TestCase):
             validate_config(config)
 
         config["execution"]["price_limit_mode"] = "ohlc_proven_tier_conservative"
+        validate_config(config)
+
+        config["features"] = {"mode": "alpha360", "families": []}
         validate_config(config)
 
     def test_cpu_device_check_does_not_probe_gpu(self):

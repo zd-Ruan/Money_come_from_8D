@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-08-13T22:18:59.411146+08:00",
+  "training_ready": true,
+  "universe_count": 1438,
+  "raw_file_count": 1438,
+  "raw_cache_file_count": 1441,
+  "pool_external_raw_file_count": 3,
+  "raw_total_rows": 1222262,
+  "data_source_rows": {
+    "sina": 1222262
+  },
+  "reported_amount_ratio": 0.0,
+  "estimated_amount_ratio": 1.0,
+  "normalized_file_count": 1438,
+  "normalized_cache_file_count": 1441,
+  "pool_external_normalized_file_count": 3,
+  "total_rows": 1221055,
+  "min_latest_date": "2026-08-11",
+  "max_latest_date": "2026-08-11",
+  "issue_count": 0,
+  "issues": []
+}

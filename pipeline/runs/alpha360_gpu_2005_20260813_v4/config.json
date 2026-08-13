@@ -1,0 +1,114 @@
+{
+  "project": {
+    "name": "etf_alpha360_small_account",
+    "description": "Standard Alpha360 walk-forward model for the current T+1 ETF universe and a CNY 20,000 research account on the home RTX 2060",
+    "random_seeds": [
+      20260812,
+      20260813,
+      20260814
+    ]
+  },
+  "features": {
+    "mode": "alpha360",
+    "families": []
+  },
+  "paths": {
+    "qlib_provider": "data/cn_etf/qlib_data_alpha360_2005_20260811",
+    "universe": "data/cn_etf/trainable_universe_2015.csv",
+    "instruments": "data/cn_etf/qlib_data_alpha360_2005_20260811/instruments/t1_etf.txt",
+    "validation_report": "data/cn_etf/validation_alpha360_2005.json",
+    "environment_lock": "pipeline/environment.home-rtx2060.lock.json",
+    "runs": "pipeline/runs",
+    "snapshots": "pipeline/snapshots",
+    "registry": "pipeline/registry.json"
+  },
+  "data": {
+    "region": "cn",
+    "market": "t1_etf",
+    "benchmark": "SH510300",
+    "start_date": "2005-01-01",
+    "end_date": "2026-08-11",
+    "max_stale_days": 1,
+    "test_start_date": "2025-01-01",
+    "label": "Ref($close, -2) / Ref($close, -1) - 1",
+    "label_horizon_bars": 2,
+    "liquidity_expression": "Mean($close * $volume, 20) > 10000000",
+    "universe_mode": "current_snapshot"
+  },
+  "rolling": {
+    "train_mode": "expanding",
+    "validation_days": 126,
+    "test_days": 63,
+    "purge_bars": 2
+  },
+  "model": {
+    "name": "lightgbm",
+    "objective": "regression",
+    "learning_rate": 0.03,
+    "num_leaves": 31,
+    "max_depth": 7,
+    "min_data_in_leaf": 100,
+    "feature_fraction": 0.8,
+    "bagging_fraction": 0.8,
+    "bagging_freq": 1,
+    "lambda_l1": 10.0,
+    "lambda_l2": 20.0,
+    "num_boost_round": 500,
+    "early_stopping_rounds": 50,
+    "num_threads": 12,
+    "device_type": "gpu",
+    "gpu_platform_id": 0,
+    "gpu_device_id": 0,
+    "gpu_use_dp": true,
+    "max_bin": 63,
+    "verbosity": 1
+  },
+  "strategy": {
+    "topk": 5,
+    "n_drop": 1,
+    "hold_thresh": 5,
+    "risk_degree": 0.9
+  },
+  "execution": {
+    "account": 20000,
+    "deal_price": "close",
+    "commission_bps_per_side": 3,
+    "base_slippage_bps_per_side": 5,
+    "min_cost": 5,
+    "trade_unit": 100,
+    "stamp_tax_bps": 0,
+    "price_limit_mode": "ohlc_proven_tier_conservative",
+    "standard_limit_ratio": 0.1,
+    "wide_limit_ratio": 0.2,
+    "price_tick": 0.001,
+    "max_daily_volume_participation": 0.05,
+    "stress_slippage_bps_per_side": [
+      0,
+      5,
+      10,
+      15,
+      20,
+      30
+    ]
+  },
+  "gates": {
+    "min_test_days": 252,
+    "min_prediction_coverage": 0.95,
+    "min_fill_rate": 0.95,
+    "max_zero_fill_order_rate": 0.05,
+    "min_complete_folds": 4,
+    "min_positive_fold_excess_ratio": 0.6,
+    "min_hac_t_stat": 1.96,
+    "min_rank_ic_hac_t_stat": 1.96,
+    "max_strategy_drawdown": 0.25,
+    "research_fold_days": 21,
+    "min_research_fold_win_ratio": 0.6,
+    "max_single_etf_abs_contribution_share": 0.35,
+    "max_single_fold_abs_incremental_pnl_share": 0.5,
+    "required_stress_slippage_bps": 10,
+    "require_historical_point_in_time_universe_for_promotion": true
+  },
+  "report": {
+    "title": "ETF Alpha360 小账户滚动量化（家庭 RTX 2060，2005年起）"
+  }
+}

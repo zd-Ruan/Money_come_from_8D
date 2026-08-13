@@ -1,0 +1,1006 @@
+{
+  "schema_version": 1,
+  "algorithm": "sha256",
+  "artifacts": [
+    {
+      "path": "audits/corporate_actions_pretraining/details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "audits/corporate_actions_pretraining/factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "audits/corporate_actions_pretraining/summary.json",
+      "size": 554,
+      "sha256": "6c64ba98310f1526864fd2c740fd7da32049651709e69a6b9efa7925eeae2309"
+    },
+    {
+      "path": "audits/corporate_actions_pretraining/summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "backtests/slippage_00bps/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "backtests/slippage_00bps/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "backtests/slippage_00bps/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "backtests/slippage_00bps/corporate_actions.parquet",
+      "size": 56637,
+      "sha256": "81f51ec1ed743ced929ce07547a4877fb8296322cd2ffbfe5a6d3f8f43ed77ff"
+    },
+    {
+      "path": "backtests/slippage_00bps/executions.parquet",
+      "size": 117147,
+      "sha256": "7999eb26cd913b85e0e1ede49bfb56e7fc053bb357c00bd9a1ec4d2e57d6c54b"
+    },
+    {
+      "path": "backtests/slippage_00bps/indicators.parquet",
+      "size": 12886,
+      "sha256": "9dc4b2f02afbabf11ac6c3b474ca2652ef0ceed471c1e3a13f5a9fe215785110"
+    },
+    {
+      "path": "backtests/slippage_00bps/positions.parquet",
+      "size": 36243,
+      "sha256": "f28588602a50329502e3f988ac9f5459c19f82b29a3da881ccc7416478861318"
+    },
+    {
+      "path": "backtests/slippage_00bps/report.parquet",
+      "size": 28709,
+      "sha256": "7e4607e62cf7add6762dd0609d134ce280eab7781b205b4f80e173aae5ca8329"
+    },
+    {
+      "path": "backtests/slippage_00bps/summary.json",
+      "size": 6300,
+      "sha256": "96954a5013fe58a0d23cecfb81a2ca1149329907c13f724104f4879bb02ffec4"
+    },
+    {
+      "path": "backtests/slippage_00bps/symbol_attribution.parquet",
+      "size": 159563,
+      "sha256": "ef1cf89278da4edd2a5ab9f5714f7ac0850ee7ec932685e8f4199bcaf7774387"
+    },
+    {
+      "path": "backtests/slippage_05bps/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "backtests/slippage_05bps/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "backtests/slippage_05bps/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "backtests/slippage_05bps/corporate_actions.parquet",
+      "size": 56540,
+      "sha256": "b883bc7f6ce3e716a1607c9fee242eb1d7d5d493454fd410c17a2de86c8960fd"
+    },
+    {
+      "path": "backtests/slippage_05bps/executions.parquet",
+      "size": 123650,
+      "sha256": "2ff269464f3882972e9219e987838afe910d62ae64408da236c93b06632ef009"
+    },
+    {
+      "path": "backtests/slippage_05bps/indicators.parquet",
+      "size": 12875,
+      "sha256": "901811dcdf0b89e9bff33c7869d6a2c72d6650acda792047eb45a870d6850caf"
+    },
+    {
+      "path": "backtests/slippage_05bps/positions.parquet",
+      "size": 36616,
+      "sha256": "ce067530e300ee8a9123d3c24e13dba8c0b721cf4f2dc17cbef1a367779bd0df"
+    },
+    {
+      "path": "backtests/slippage_05bps/report.parquet",
+      "size": 29342,
+      "sha256": "fb773fc329aeb17fa643b2ddfe1a265007915939b1a7aa1b8f85241a8340894a"
+    },
+    {
+      "path": "backtests/slippage_05bps/summary.json",
+      "size": 7234,
+      "sha256": "7dc9fff821db22e701d432371043ebe5b707ec1ab4a3f84da403daa849dd8f83"
+    },
+    {
+      "path": "backtests/slippage_05bps/symbol_attribution.parquet",
+      "size": 179836,
+      "sha256": "822474c245977c1b23e588ee811fb5c6f1eb038d5e3304faa20dc464dc6216e0"
+    },
+    {
+      "path": "backtests/slippage_10bps/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "backtests/slippage_10bps/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "backtests/slippage_10bps/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "backtests/slippage_10bps/corporate_actions.parquet",
+      "size": 57029,
+      "sha256": "2c84054a5d4df51589dd129f7c3574bcef7873617f6b0815a6702e4ecdca9e47"
+    },
+    {
+      "path": "backtests/slippage_10bps/executions.parquet",
+      "size": 120825,
+      "sha256": "2e4e84408fbde4611a7c408165e92497e98043088b2d881f5e99007e8d9ba704"
+    },
+    {
+      "path": "backtests/slippage_10bps/indicators.parquet",
+      "size": 12974,
+      "sha256": "16696e8be1ccf96883e742ca91196c5990ba5cb558f13640b1bcedb54c41a576"
+    },
+    {
+      "path": "backtests/slippage_10bps/positions.parquet",
+      "size": 36384,
+      "sha256": "44eb3d6a75e363397b5b32ed46cd5a4acdd7a70642b081a58756174659134d58"
+    },
+    {
+      "path": "backtests/slippage_10bps/report.parquet",
+      "size": 29518,
+      "sha256": "dd2e98c92d43f5435cf24229c9e15052bc228f7301bda42f9deb2ed55531df62"
+    },
+    {
+      "path": "backtests/slippage_10bps/summary.json",
+      "size": 8965,
+      "sha256": "5c47fd8351e2bb157562afa118c3a88844eb19d978166733ba739dcc11991f6c"
+    },
+    {
+      "path": "backtests/slippage_10bps/symbol_attribution.parquet",
+      "size": 178068,
+      "sha256": "3fe3807644523036ce9c266179ec95e32f911d6fb31beb03b6445cf12f328957"
+    },
+    {
+      "path": "backtests/slippage_15bps/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "backtests/slippage_15bps/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "backtests/slippage_15bps/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "backtests/slippage_15bps/corporate_actions.parquet",
+      "size": 56880,
+      "sha256": "651db24645b4ed51689cde4e44319bd6b3304b440f453125b831a0d03d8d5307"
+    },
+    {
+      "path": "backtests/slippage_15bps/executions.parquet",
+      "size": 121530,
+      "sha256": "768c831d73cfe64b3f401048741ae3be15560bd286b7f5b1cad566190ad59c49"
+    },
+    {
+      "path": "backtests/slippage_15bps/indicators.parquet",
+      "size": 12899,
+      "sha256": "4d61f3156c896e914a8587cb1d44a81ec2d68586e7d0800be290378fb8dd9635"
+    },
+    {
+      "path": "backtests/slippage_15bps/positions.parquet",
+      "size": 35653,
+      "sha256": "dae0961bdc5c82abbcc2f59e6f3e1249075968767e6d5720f6d41e1703cb52ee"
+    },
+    {
+      "path": "backtests/slippage_15bps/report.parquet",
+      "size": 29332,
+      "sha256": "7a6a6651397363321d676cb38036c6b8f3c06f8aaa283514dbd8bbd9f5aba00b"
+    },
+    {
+      "path": "backtests/slippage_15bps/summary.json",
+      "size": 7565,
+      "sha256": "e55804698a99fbc92e3a2e91c458431cfd7ab44d30fdc247804356e939450af6"
+    },
+    {
+      "path": "backtests/slippage_15bps/symbol_attribution.parquet",
+      "size": 177093,
+      "sha256": "1cdf278241564d8225376c4238c9ea414249827f8eca370fa678e5c6c925b6ee"
+    },
+    {
+      "path": "backtests/slippage_20bps/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "backtests/slippage_20bps/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "backtests/slippage_20bps/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "backtests/slippage_20bps/corporate_actions.parquet",
+      "size": 56574,
+      "sha256": "b53c64fef5fdea6e74533418faeeb069d09422dd326409a81a0445a6c79c0ebb"
+    },
+    {
+      "path": "backtests/slippage_20bps/executions.parquet",
+      "size": 120844,
+      "sha256": "49d57bd08c702b1b726261c9a3684695283a0960a813a00cadeb1b235026929e"
+    },
+    {
+      "path": "backtests/slippage_20bps/indicators.parquet",
+      "size": 12873,
+      "sha256": "f906a5c8096f5ff21296e77999533a2b66762eea1d8effc6ebbdddb19d253db5"
+    },
+    {
+      "path": "backtests/slippage_20bps/positions.parquet",
+      "size": 36264,
+      "sha256": "6a72a5e44f8fb1d0dd1d8ba5273df5d18ae66ab6968e1d09e9af78f00a9719ee"
+    },
+    {
+      "path": "backtests/slippage_20bps/report.parquet",
+      "size": 29224,
+      "sha256": "3da33e26609c33893513e70eac1aabced9544043d0ecbd138e4c564da82b3476"
+    },
+    {
+      "path": "backtests/slippage_20bps/summary.json",
+      "size": 7554,
+      "sha256": "088bfdfe7801ec36e9ad08593c0620645c6dd5e02176b13c1fe09973178b78ce"
+    },
+    {
+      "path": "backtests/slippage_20bps/symbol_attribution.parquet",
+      "size": 176966,
+      "sha256": "0052bd1416f21045c0114a0f277d68f321cb5f2f49c63250a10062cba2313093"
+    },
+    {
+      "path": "backtests/slippage_30bps/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "backtests/slippage_30bps/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "backtests/slippage_30bps/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "backtests/slippage_30bps/corporate_actions.parquet",
+      "size": 56837,
+      "sha256": "d5aefef36b36989501eaadbce67aae3c5fde5659aa8873301bf90f57b639ca7a"
+    },
+    {
+      "path": "backtests/slippage_30bps/executions.parquet",
+      "size": 119918,
+      "sha256": "4fcf44988a4e29918ee400ef8845ace8c8569e68f9a2638c6cf12318c3d53bc9"
+    },
+    {
+      "path": "backtests/slippage_30bps/indicators.parquet",
+      "size": 12815,
+      "sha256": "7ed6fd2b11dbc908d4f0b7d02536c5732904d16bc7b159775dee8d216a3cca9d"
+    },
+    {
+      "path": "backtests/slippage_30bps/positions.parquet",
+      "size": 36122,
+      "sha256": "2e88513f640d90ef3ae06636b9b455d220c9d15062c4f146cd408671e4c16a79"
+    },
+    {
+      "path": "backtests/slippage_30bps/report.parquet",
+      "size": 29186,
+      "sha256": "cc270afa9990573471136ec0b8b495cb080046af179685af6cf8d953f70b36bc"
+    },
+    {
+      "path": "backtests/slippage_30bps/summary.json",
+      "size": 7344,
+      "sha256": "0e6db8669b5c6c5c2a217df1a0d17e75518e3773248985ad8cba8bd24ea486d7"
+    },
+    {
+      "path": "backtests/slippage_30bps/symbol_attribution.parquet",
+      "size": 176152,
+      "sha256": "02ca0ca35c633c8ea789a71920508ca6a963fd50927b663edbf3ec81a9433510"
+    },
+    {
+      "path": "backtests/slippage_costonly_10bps/report.parquet",
+      "size": 30590,
+      "sha256": "935afb8e0141b0023c57c1675445d06f4b0c01cf5840aa75512806d0eeaaeaab"
+    },
+    {
+      "path": "backtests/slippage_costonly_10bps/summary.json",
+      "size": 7447,
+      "sha256": "3e7f08fc797ef4971e226aa4ee608e6f401ee23940332725d3bc3e51cedb921d"
+    },
+    {
+      "path": "backtests/slippage_costonly_15bps/report.parquet",
+      "size": 30590,
+      "sha256": "0fab0161609b05ceeced6a1558acc1ce706ce3234121e70b762a38d997d73b4a"
+    },
+    {
+      "path": "backtests/slippage_costonly_15bps/summary.json",
+      "size": 7425,
+      "sha256": "08606121e9fe8edd738e3a5bc348e214eed484af71ea995c73282e39a066c126"
+    },
+    {
+      "path": "backtests/slippage_costonly_20bps/report.parquet",
+      "size": 30590,
+      "sha256": "3c2c5de74dd114191df9c18c025dcbe3322bd0ed6b8180bbdedb6f55be7fc959"
+    },
+    {
+      "path": "backtests/slippage_costonly_20bps/summary.json",
+      "size": 7429,
+      "sha256": "8b2a7bbc2d89efdbc6537a1a4b662397661eedf41f8e844ac38d12f2792940c5"
+    },
+    {
+      "path": "backtests/slippage_costonly_30bps/report.parquet",
+      "size": 30590,
+      "sha256": "0ddc7cf644bb51aa2d986b0c9aacc88b9557195ac735c953d87a85f38bf5145f"
+    },
+    {
+      "path": "backtests/slippage_costonly_30bps/summary.json",
+      "size": 7431,
+      "sha256": "bb6c8addf0348a0fc91d7aed9cfd4ee061e7c40f67828f32616477fde740ac80"
+    },
+    {
+      "path": "config.json",
+      "size": 3293,
+      "sha256": "fbd9703191d65536d402dc6c2ad0292288192a4873ded1180c3567b39fd58b3f"
+    },
+    {
+      "path": "environment.home-rtx2060.lock.json",
+      "size": 417,
+      "sha256": "574c9ecb8dc2f6e7063902b84451391a3d43e3bad8d19d7b3efe4abd24981e73"
+    },
+    {
+      "path": "folds.json",
+      "size": 1711,
+      "sha256": "e8b3c938435e59db403e9815a91067e8631c51a36f2aeeec30d9f5be29408f46"
+    },
+    {
+      "path": "folds/fold_01/backtest/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "folds/fold_01/backtest/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "folds/fold_01/backtest/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "folds/fold_01/backtest/corporate_actions.parquet",
+      "size": 12970,
+      "sha256": "463a545fb026f2aa02b92e281bb02eb2dac1d5ab22ecd22e6d4c4d70c95fa3a8"
+    },
+    {
+      "path": "folds/fold_01/backtest/executions.parquet",
+      "size": 32129,
+      "sha256": "17bfcd89c5a0f586d1703e09bb27f97712b8a6d465fa1641ba563f49c97c7d53"
+    },
+    {
+      "path": "folds/fold_01/backtest/indicators.parquet",
+      "size": 6028,
+      "sha256": "dbbc16f0216d3c8e5d4226993caf19f358075dcf4ae6cc421615f27d5f2c5b5a"
+    },
+    {
+      "path": "folds/fold_01/backtest/positions.parquet",
+      "size": 10501,
+      "sha256": "917d699bd62f23c5c7e376a71d652a1c4de0bfb97cdd60cab66a4ca26141f8dd"
+    },
+    {
+      "path": "folds/fold_01/backtest/report.parquet",
+      "size": 9732,
+      "sha256": "f1f8fa2d161c63180da9afab2ae13da89aefd2cf567c6e89cee14da1aae361e3"
+    },
+    {
+      "path": "folds/fold_01/backtest/symbol_attribution.parquet",
+      "size": 47092,
+      "sha256": "68f80539c2b30def4b5999cee3e9dfdab11b041458290e71cad66c770260854a"
+    },
+    {
+      "path": "folds/fold_01/eval_seed_20260812.json",
+      "size": 4753,
+      "sha256": "3410428594f445bba1718835e99b0f9faafba8d993177165320c5dbcdda81f98"
+    },
+    {
+      "path": "folds/fold_01/eval_seed_20260813.json",
+      "size": 2982,
+      "sha256": "94a3148b7ab30903b8ddfeaf87dac45fd4b44c0dfffce41c5a557a222eedb551"
+    },
+    {
+      "path": "folds/fold_01/eval_seed_20260814.json",
+      "size": 3093,
+      "sha256": "e5f3e1d7e2c9d4f7f6a32843d786b664a9e3d1d12a051ac5b30e622c871338c9"
+    },
+    {
+      "path": "folds/fold_01/feature_importance.parquet",
+      "size": 6568,
+      "sha256": "f6609bbf7c7505eb96016c773bf186357952ac667ec83e14077748f1ed53aefc"
+    },
+    {
+      "path": "folds/fold_01/model_seed_20260812.txt",
+      "size": 136668,
+      "sha256": "89737876dccfa9809ec0c833f8fae7bd6dfe104a99a6ddc13f1bc923385b3a00"
+    },
+    {
+      "path": "folds/fold_01/model_seed_20260813.txt",
+      "size": 33257,
+      "sha256": "dcadc7d6dd7c0264dd45b68bf0e3c6d797ba8b0d1feefd9ce72bc49d8161a299"
+    },
+    {
+      "path": "folds/fold_01/model_seed_20260814.txt",
+      "size": 39386,
+      "sha256": "498bd6dbc2e2c1b6227b3d483eb0bf6b8639bc4decf2b703f71d959564a6ec92"
+    },
+    {
+      "path": "folds/fold_01/summary.json",
+      "size": 5543,
+      "sha256": "8936da288ee574c2758cdfbc46fe3b86ed087c8ad057f226e8abbb0ecee85b39"
+    },
+    {
+      "path": "folds/fold_02/backtest/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "folds/fold_02/backtest/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "folds/fold_02/backtest/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "folds/fold_02/backtest/corporate_actions.parquet",
+      "size": 15537,
+      "sha256": "6119d5eab22d94bc65a8caa4ca90677b732e2b969c8d522504713527fbb5954b"
+    },
+    {
+      "path": "folds/fold_02/backtest/executions.parquet",
+      "size": 33362,
+      "sha256": "48528589636844880cffdc77073e25de989f4db656e05c175d5a074990341d65"
+    },
+    {
+      "path": "folds/fold_02/backtest/indicators.parquet",
+      "size": 5855,
+      "sha256": "0768ab9e02bb9932b283f70764f552d8a3f0dd2b6921a31b0e4e946fb441329d"
+    },
+    {
+      "path": "folds/fold_02/backtest/positions.parquet",
+      "size": 10249,
+      "sha256": "dc04dabaef9d463e25d589cfe2dabf8c1cf8a7cbd9614554027465091a1c6230"
+    },
+    {
+      "path": "folds/fold_02/backtest/report.parquet",
+      "size": 9556,
+      "sha256": "5fca5d2b44870a0a555d02275ec25e25c52ab8b6edcb1a87ffcd1ef7f43fc0b5"
+    },
+    {
+      "path": "folds/fold_02/backtest/symbol_attribution.parquet",
+      "size": 46323,
+      "sha256": "f1a97af336e15fae46f6a1edcd3217a6ffaae459a12049be6d846e8db1352044"
+    },
+    {
+      "path": "folds/fold_02/eval_seed_20260812.json",
+      "size": 4649,
+      "sha256": "cb215451a4f686d256d822c432a8dbc1982d2ddc078d611b498dc1bce1e32cc9"
+    },
+    {
+      "path": "folds/fold_02/eval_seed_20260813.json",
+      "size": 3247,
+      "sha256": "75ca2fcb5feaf5f94bc59a10c5956b4f724659c7407d80293b0683493c68a8d8"
+    },
+    {
+      "path": "folds/fold_02/eval_seed_20260814.json",
+      "size": 4264,
+      "sha256": "bff50b3fcf8ed7ee3429c387e6c9465f8347e4fc6b08c933a2a22f59b2626374"
+    },
+    {
+      "path": "folds/fold_02/feature_importance.parquet",
+      "size": 6714,
+      "sha256": "eac69fa386c58d7e3d35cdaf65e0045017c571ac0eeee0d8055f8ae5549d1cab"
+    },
+    {
+      "path": "folds/fold_02/model_seed_20260812.txt",
+      "size": 130576,
+      "sha256": "f558f8699ee13626e7d3fbcae741a8d70086e0f8c1a428ccd85d1c3ebdcdbc98"
+    },
+    {
+      "path": "folds/fold_02/model_seed_20260813.txt",
+      "size": 49205,
+      "sha256": "da344c87d08fa2849dabb8634fdea83ef9aa16885539dfa38aa711a2991634ae"
+    },
+    {
+      "path": "folds/fold_02/model_seed_20260814.txt",
+      "size": 108620,
+      "sha256": "50a1c75bc3512106a48776bb19f0253903ba084a36e1ba83a674667b4aca8e25"
+    },
+    {
+      "path": "folds/fold_02/summary.json",
+      "size": 5524,
+      "sha256": "cd0704c746af5f56a924ec0dca51f14fda1e3e9f04b5e5daef0316f691dcfbd0"
+    },
+    {
+      "path": "folds/fold_03/backtest/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "folds/fold_03/backtest/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "folds/fold_03/backtest/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "folds/fold_03/backtest/corporate_actions.parquet",
+      "size": 16394,
+      "sha256": "78cfd80cdbedc7a127db1f6b49269ef92cd4fb0359ab0d6426784c1a73c63f1a"
+    },
+    {
+      "path": "folds/fold_03/backtest/executions.parquet",
+      "size": 32504,
+      "sha256": "87d05f3cc053de14e1542b3eb40181a928a5ad751cc43f79e088c390b66de7b3"
+    },
+    {
+      "path": "folds/fold_03/backtest/indicators.parquet",
+      "size": 5898,
+      "sha256": "1a9dc17917ab3adf9ad6e733a381228d098ce598620511a25cf9d5dfe760f082"
+    },
+    {
+      "path": "folds/fold_03/backtest/positions.parquet",
+      "size": 10576,
+      "sha256": "a70a0705a63221c89bf747273e9fcd3eafb7c83b47a0d7588bedf9878856f8ca"
+    },
+    {
+      "path": "folds/fold_03/backtest/report.parquet",
+      "size": 9544,
+      "sha256": "27113e344f4491f8727e45e8528ee85d009b02ebab6aef99aced2070e6428d64"
+    },
+    {
+      "path": "folds/fold_03/backtest/symbol_attribution.parquet",
+      "size": 47230,
+      "sha256": "313da9c21e57e1e58de5a5cc4d81f7b922d2ef9921d4bd6b798622132a2ef280"
+    },
+    {
+      "path": "folds/fold_03/eval_seed_20260812.json",
+      "size": 6849,
+      "sha256": "e870eea3e950b25893eae66d079d7a1518469516b0d5291b82d19df55b8d842c"
+    },
+    {
+      "path": "folds/fold_03/eval_seed_20260813.json",
+      "size": 7329,
+      "sha256": "3f3f134d1d208e082c5c3e7d90a0ee369a13310b9a40a7a9d29bd46fccabb6bf"
+    },
+    {
+      "path": "folds/fold_03/eval_seed_20260814.json",
+      "size": 6419,
+      "sha256": "aace7febfc423e98bf72cc7292d149ed96ecd049ede09a319415b96753ca1ccc"
+    },
+    {
+      "path": "folds/fold_03/feature_importance.parquet",
+      "size": 7425,
+      "sha256": "53adb69cf938250f5b96d1c6f88017f4046b324c6b0b916dd1d85e5f53abbf43"
+    },
+    {
+      "path": "folds/fold_03/model_seed_20260812.txt",
+      "size": 256650,
+      "sha256": "2732c011ebd13d6a8b68f3723cacfc1f853019139d1c8e511dea7a8e37478dfc"
+    },
+    {
+      "path": "folds/fold_03/model_seed_20260813.txt",
+      "size": 283587,
+      "sha256": "adcbf847688fdc6d5db8a94037643969b797da29f73899c3c26dbe5c33d2c7ba"
+    },
+    {
+      "path": "folds/fold_03/model_seed_20260814.txt",
+      "size": 232541,
+      "sha256": "f64ee6f13a5712ace3c6e82e7998482b6861a0ec360da5817790caa76adeb592"
+    },
+    {
+      "path": "folds/fold_03/summary.json",
+      "size": 6329,
+      "sha256": "0da7f4456a9165991ad0f68632d08fee6f6f85583685216b4e8a24014cce96f0"
+    },
+    {
+      "path": "folds/fold_04/backtest/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "folds/fold_04/backtest/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "folds/fold_04/backtest/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "folds/fold_04/backtest/corporate_actions.parquet",
+      "size": 18104,
+      "sha256": "1e707e8e22ded48569d3762740ce7966da72fa764882b9cd6e1a384fe272959a"
+    },
+    {
+      "path": "folds/fold_04/backtest/executions.parquet",
+      "size": 32795,
+      "sha256": "fa2d32deb8ac68ab8a36d825c895a9e5a0adc4850aa1b9eec3c69ed8cbfd6ec9"
+    },
+    {
+      "path": "folds/fold_04/backtest/indicators.parquet",
+      "size": 5949,
+      "sha256": "24f9ced137cdaddb7aec95c4e6bc783a53c9b77a55996d4c90d7f2dc896b3dd1"
+    },
+    {
+      "path": "folds/fold_04/backtest/positions.parquet",
+      "size": 10502,
+      "sha256": "1e85592d893f60d8a5b8294f6dc1ea2228124f368f966fe4650811117e637ec9"
+    },
+    {
+      "path": "folds/fold_04/backtest/report.parquet",
+      "size": 9590,
+      "sha256": "8f4580b6d625a91ff3a73f34b8541b5a42f97354c07613324e7fb35fa898e41e"
+    },
+    {
+      "path": "folds/fold_04/backtest/symbol_attribution.parquet",
+      "size": 47124,
+      "sha256": "f656ce21d6706ef091cf2ddc6e107d492306c2be4590d460f94368c2d52ca1bf"
+    },
+    {
+      "path": "folds/fold_04/eval_seed_20260812.json",
+      "size": 2927,
+      "sha256": "b79f9beea0f00189dc5efb3614d4600befc67ad5f9436ca29cef1111ce40f905"
+    },
+    {
+      "path": "folds/fold_04/eval_seed_20260813.json",
+      "size": 2823,
+      "sha256": "f41ab2271344c6aaf358394d7aef4ef22c777d1ae7ae252bd7a07176fa10db4b"
+    },
+    {
+      "path": "folds/fold_04/eval_seed_20260814.json",
+      "size": 2865,
+      "sha256": "3318093cbd5ca79b5ef17a8a53186ac9544892a8a4f789ee628f344d5bd6ceaf"
+    },
+    {
+      "path": "folds/fold_04/feature_importance.parquet",
+      "size": 4970,
+      "sha256": "5547ebe951d75e9fbd69a752b9868b5aac178039f4a3a493ec99bce4af400d39"
+    },
+    {
+      "path": "folds/fold_04/model_seed_20260812.txt",
+      "size": 30000,
+      "sha256": "b4adde3bbe85895042fa69cd3b7fa65b94d83816f176bb5d4053328cd5ea333b"
+    },
+    {
+      "path": "folds/fold_04/model_seed_20260813.txt",
+      "size": 23454,
+      "sha256": "1e443c991e0db0244b1d876d41c81da9b176b943ba799d35b54fc0c8bc3a2d4b"
+    },
+    {
+      "path": "folds/fold_04/model_seed_20260814.txt",
+      "size": 26647,
+      "sha256": "dfa2777fd3d200dad4c8bb4f3aad43519e41609b9f1c3eeb79c0e9dced5d134b"
+    },
+    {
+      "path": "folds/fold_04/summary.json",
+      "size": 5556,
+      "sha256": "0939aef366fbf97baf67c750bb2286b0ed4c825e9e5d80174e2c99adb2b8f0d1"
+    },
+    {
+      "path": "folds/fold_05/backtest/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "folds/fold_05/backtest/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "folds/fold_05/backtest/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "folds/fold_05/backtest/corporate_actions.parquet",
+      "size": 17592,
+      "sha256": "c5aae79f707cd1a64c523c6ff4b4fb59b0142cfd90efb51cb68a2193dc35b3cd"
+    },
+    {
+      "path": "folds/fold_05/backtest/executions.parquet",
+      "size": 33684,
+      "sha256": "ca493bc479da9be8dec346c55742948315997fd8927f6c4d84a1c309ff5a4c3a"
+    },
+    {
+      "path": "folds/fold_05/backtest/indicators.parquet",
+      "size": 5947,
+      "sha256": "cb9df2a9735251e71b1519b15323fd53edd9e3e39fb3cf29f1805d405fa49c18"
+    },
+    {
+      "path": "folds/fold_05/backtest/positions.parquet",
+      "size": 10319,
+      "sha256": "94e0725a60239721a98d716c3feae67cf016cf031372f81474e331e0570297e1"
+    },
+    {
+      "path": "folds/fold_05/backtest/report.parquet",
+      "size": 9661,
+      "sha256": "a06b88a73e30353bc9954dc68694d6fc4b63777c9d26a7c7fe3b2240b0f89023"
+    },
+    {
+      "path": "folds/fold_05/backtest/symbol_attribution.parquet",
+      "size": 47311,
+      "sha256": "4cd92d373913b0d3d5a3adb144f1c59a0e1a0057f9f4b6dcd4b822c09c3bd5a3"
+    },
+    {
+      "path": "folds/fold_05/eval_seed_20260812.json",
+      "size": 2815,
+      "sha256": "bdef0cce586e1365ab630eb096f99cb830960fd54bc3a67c6d8545f2e1816f20"
+    },
+    {
+      "path": "folds/fold_05/eval_seed_20260813.json",
+      "size": 2812,
+      "sha256": "fbb8db4f12485f3bf4d5832a2910a588cf0cafdfbb78f9ea0764fb9dfecf95d6"
+    },
+    {
+      "path": "folds/fold_05/eval_seed_20260814.json",
+      "size": 2812,
+      "sha256": "928d418335e00dd2ea46c0b0fc4e865de76d5d0342eb2f87344606c4590f4148"
+    },
+    {
+      "path": "folds/fold_05/feature_importance.parquet",
+      "size": 4638,
+      "sha256": "41570bbf9c8aeae5b9775df28d2a99feea2dab23f8a2e3ce0263f982358e2aa2"
+    },
+    {
+      "path": "folds/fold_05/model_seed_20260812.txt",
+      "size": 23420,
+      "sha256": "b1a0071a04c37ecb3fd78a4e61109120e1d479c930329e9334460b9ce4d6dc66"
+    },
+    {
+      "path": "folds/fold_05/model_seed_20260813.txt",
+      "size": 23448,
+      "sha256": "4ccb43645ade47d578e8a4df33204ff9d346070c4414557f266ac8cfa65836f7"
+    },
+    {
+      "path": "folds/fold_05/model_seed_20260814.txt",
+      "size": 23446,
+      "sha256": "b7607ebed731d640fdd9e6050063264dad8131fbf7b3a1eb31ff6c107fdbf8c3"
+    },
+    {
+      "path": "folds/fold_05/summary.json",
+      "size": 5566,
+      "sha256": "515628017e8097535bfdf2af3937de3533317ab8061098e8c2efe29eb012ef95"
+    },
+    {
+      "path": "folds/fold_06/backtest/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "folds/fold_06/backtest/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "folds/fold_06/backtest/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "folds/fold_06/backtest/corporate_actions.parquet",
+      "size": 19514,
+      "sha256": "f095d0a0216393f4e87d0a88e83ff812ab46d706f44254090702e924245af11a"
+    },
+    {
+      "path": "folds/fold_06/backtest/executions.parquet",
+      "size": 33334,
+      "sha256": "c3e4d9ed8e6b522cdf3cb7e989e7a3a36dd79c278e5ed0ed89efdcdc8d46d0c1"
+    },
+    {
+      "path": "folds/fold_06/backtest/indicators.parquet",
+      "size": 5949,
+      "sha256": "da080cd289e3a1a8322d4683a926841b016e2b4b562fbf5bbab477212185c488"
+    },
+    {
+      "path": "folds/fold_06/backtest/positions.parquet",
+      "size": 10616,
+      "sha256": "7a13bab96b4bbdac0290089f675b0d2c204dc939ba18ed6de30af290d836a563"
+    },
+    {
+      "path": "folds/fold_06/backtest/report.parquet",
+      "size": 9618,
+      "sha256": "baac219b0c586ea1f703c29c3e484477b8e06508eff91762dea21442045b3818"
+    },
+    {
+      "path": "folds/fold_06/backtest/symbol_attribution.parquet",
+      "size": 47592,
+      "sha256": "d2ac1fd931aa23a89e5c729a481c4aaf4b57803c12cefdaf75a6560177a6b00f"
+    },
+    {
+      "path": "folds/fold_06/eval_seed_20260812.json",
+      "size": 4062,
+      "sha256": "9b0708d51e4c23a14bbf952fbc04275e03d98a74794d94fa3e896b466a16495b"
+    },
+    {
+      "path": "folds/fold_06/eval_seed_20260813.json",
+      "size": 4111,
+      "sha256": "d78935ca6baca9b752ddbd110732d50f23dbc6ba275a70390bf08588949edc90"
+    },
+    {
+      "path": "folds/fold_06/eval_seed_20260814.json",
+      "size": 4281,
+      "sha256": "d46184d858387699b42f64dac2ff4924eec2e530c6d2c0ed04cf2dda67683c16"
+    },
+    {
+      "path": "folds/fold_06/feature_importance.parquet",
+      "size": 6719,
+      "sha256": "eb6dcee4901d60f9bf8feda5c071e39f5e78ea1b79cfc2d0d84078f3ae54ca3b"
+    },
+    {
+      "path": "folds/fold_06/model_seed_20260812.txt",
+      "size": 96078,
+      "sha256": "2b4d86aa6e7474969fb909e8ced29790757e9de3d601408aa0c49a97632998db"
+    },
+    {
+      "path": "folds/fold_06/model_seed_20260813.txt",
+      "size": 99005,
+      "sha256": "331555eff4acede6484a83ae9693d73d0c48141466ec69921688b5b8b4cf70d1"
+    },
+    {
+      "path": "folds/fold_06/model_seed_20260814.txt",
+      "size": 108519,
+      "sha256": "658fc92cbd5fc6b1836aabe59a821dc8fa532550c89b4096347dadd9485ce849"
+    },
+    {
+      "path": "folds/fold_06/summary.json",
+      "size": 5675,
+      "sha256": "99ba44eaaa949ea24770bd154b40c3f4f54a6a908a6c1bd5e0d587c4f48c3688"
+    },
+    {
+      "path": "folds/fold_07/backtest/corporate_action_audit_details.parquet",
+      "size": 130349,
+      "sha256": "5942beba65aa0293fd7806dc620878dd04e178ff71ca5706a426f8b4eed9efc4"
+    },
+    {
+      "path": "folds/fold_07/backtest/corporate_action_audit_summary.parquet",
+      "size": 10486,
+      "sha256": "cb1783ee88608b282b29fe2681a10f0ed1374a52b82e48967c8caf6d2431d294"
+    },
+    {
+      "path": "folds/fold_07/backtest/corporate_action_factor_changes.parquet",
+      "size": 36542,
+      "sha256": "46fc746b2ef0c9f50ebbcbec82f2d46e8aa7906e28e0014c8aa37a4f02655a9c"
+    },
+    {
+      "path": "folds/fold_07/backtest/corporate_actions.parquet",
+      "size": 9604,
+      "sha256": "3bd1bccaed515c26a5956811a0debabc913aae8049f13bec7770c8bc83807149"
+    },
+    {
+      "path": "folds/fold_07/backtest/executions.parquet",
+      "size": 17193,
+      "sha256": "9e09cd951193f96e503856222cd168a6959cd6647a5d47503b599d0bf8659e81"
+    },
+    {
+      "path": "folds/fold_07/backtest/indicators.parquet",
+      "size": 4819,
+      "sha256": "4a886da61729505b73566243dd4fb73512a4d894a35ed0b644a65f6d70a76fab"
+    },
+    {
+      "path": "folds/fold_07/backtest/positions.parquet",
+      "size": 5747,
+      "sha256": "956419dd8f0316e322d26eac09cefee2be1dec93660e98c17bdb95c74117ee3c"
+    },
+    {
+      "path": "folds/fold_07/backtest/report.parquet",
+      "size": 6460,
+      "sha256": "46e64e5c8694890cf9af689aad099f939cd574e162d4f0c6b52a99f9ede4b2f5"
+    },
+    {
+      "path": "folds/fold_07/backtest/symbol_attribution.parquet",
+      "size": 24406,
+      "sha256": "6f54b0d16828ef99f6a23633227b8ede3839900ae03e97129369e641a1def970"
+    },
+    {
+      "path": "folds/fold_07/eval_seed_20260812.json",
+      "size": 4438,
+      "sha256": "6f24e696a0c47975bf755d41f415b03e4204a8f6d3df7636a0e02b6970145966"
+    },
+    {
+      "path": "folds/fold_07/eval_seed_20260813.json",
+      "size": 4112,
+      "sha256": "5df9118e04b5e4075a039828ee9adadbe1d215790529f38987348034565ec983"
+    },
+    {
+      "path": "folds/fold_07/eval_seed_20260814.json",
+      "size": 3413,
+      "sha256": "5bac014879622b385e098befcdda8bc21e90d84f4435f328fdd469a645131476"
+    },
+    {
+      "path": "folds/fold_07/feature_importance.parquet",
+      "size": 6662,
+      "sha256": "af382996af69b1a97a41d27456afc05378df32f94c9ffe4693f2e8a4a84f5cf4"
+    },
+    {
+      "path": "folds/fold_07/model_seed_20260812.txt",
+      "size": 117879,
+      "sha256": "d5bdf3bc7f892c2f22b199332175132aaf9a06c6e5415af6bfeed081b4474d3e"
+    },
+    {
+      "path": "folds/fold_07/model_seed_20260813.txt",
+      "size": 98967,
+      "sha256": "faf81801128727e6d291d94e5324b4e61e418855cbc755e9fd1aa951897d8c35"
+    },
+    {
+      "path": "folds/fold_07/model_seed_20260814.txt",
+      "size": 58613,
+      "sha256": "35a49a86a5bb0a6f5d6f62627f0ae68b1ffe1fe0e2bbdde2d12edf6e2d373ccd"
+    },
+    {
+      "path": "folds/fold_07/summary.json",
+      "size": 5570,
+      "sha256": "e424e60b7f564aabd8e897503fb49cd8a49b3082e6761df673ba8d98196d8811"
+    },
+    {
+      "path": "gates.json",
+      "size": 1671,
+      "sha256": "406f74abc5cc946e56919bd29dc9873404630ea9d1c7c1a7e3d9c527adf43c57"
+    },
+    {
+      "path": "metrics.json",
+      "size": 136342,
+      "sha256": "7782640aaa3619a18bbeeb09f6c09bb7f6b59b1eacb96d21634552650ef397a3"
+    },
+    {
+      "path": "predictions.parquet",
+      "size": 7961703,
+      "sha256": "a9356b335652beadd84cab9d537bcbc61f7246e30ecd0f56cbf366eb0aece145"
+    },
+    {
+      "path": "raw_factor_metrics.parquet",
+      "size": 1357,
+      "sha256": "900d59cc16e619706b32f421bc7d0b6027543ada052e81cbbeac54cfb115205e"
+    },
+    {
+      "path": "report.html",
+      "size": 3896746,
+      "sha256": "0dcace80bb5587bc0ab78a028590d71b0f263e58c28d4f4b679fe784aa4a4e99"
+    },
+    {
+      "path": "signal_metrics.parquet",
+      "size": 13048,
+      "sha256": "610d2fd0c2cf9fe6e930ac37351595caab3f238e4c345fec63a6ae238d64db54"
+    }
+  ]
+}
