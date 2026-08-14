@@ -1,6 +1,23 @@
 {
-  "updated_at": "2026-08-13T01:18:47.606425+08:00",
+  "updated_at": "2026-08-14T11:51:40.229701+08:00",
   "runs": [
+    {
+      "run_id": "alpha360_gpu_2005_20260813_v4",
+      "created_at": "2026-08-13T22:41:18.655437+08:00",
+      "completed_at": "2026-08-13T22:50:13.457225+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/alpha360_gpu_2005_20260813_v4",
+      "snapshot_id": "20260811-12975e92fa3b",
+      "metrics": {
+        "net_cumulative_return": 1.0268065835000013,
+        "benchmark_cumulative_return": 0.28200590761324573,
+        "ic": 0.01068720053629452,
+        "rank_ic": 0.01896519861502822,
+        "max_drawdown": -0.1673144425527956,
+        "relative_wealth_max_drawdown": -0.16424486755299228
+      }
+    },
     {
       "run_id": "candidate_session_structure_cpu_20260813",
       "created_at": "2026-08-13T01:14:13.027791+08:00",

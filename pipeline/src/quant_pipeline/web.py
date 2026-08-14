@@ -14,6 +14,7 @@ from urllib.parse import quote
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
+from .data_walkthrough import render_walkthrough
 from .factor_research import RESEARCH_STAGES, read_research_state, validate_research_plan
 from .integrity import verify_artifact_checksums
 from .io import read_json
@@ -2177,6 +2178,17 @@ def create_app(pipeline_root: Path) -> FastAPI:
             return HTMLResponse(sanitized)
         return FileResponse(report, media_type="text/html; charset=utf-8")
 
+    @app.get("/runs/{run_id}/data", response_class=HTMLResponse)
+    def run_data_walkthrough(run_id: str):
+        trusted = _trusted_run(runs_dir, run_id)
+        if trusted is None:
+            raise HTTPException(404, "run not found")
+        run_dir, _, _ = trusted
+        try:
+            return HTMLResponse(render_walkthrough(run_id, run_dir, pipeline_root))
+        except Exception as exc:  # noqa: BLE001 - surface rendering failures clearly
+            raise HTTPException(500, f"data walkthrough failed: {type(exc).__name__}: {exc}") from None
+
     @app.get("/", response_class=HTMLResponse)
     def dashboard():
         runs = _trusted_registry_runs(registry_path, runs_dir)
@@ -2195,6 +2207,11 @@ def create_app(pipeline_root: Path) -> FastAPI:
             status_label = _display(run_status, RUN_STATUS_LABELS, "未知")
             encoded_run_id = html.escape(quote(str(run.get("run_id", "")), safe=""), quote=True)
             report_link = f"/runs/{encoded_run_id}" if run_status == "completed" else "#"
+            data_link = (
+                f' · <a class="meta" href="/runs/{encoded_run_id}/data">数据流程</a>'
+                if run_status == "completed"
+                else ""
+            )
             comparison_match = comparisons_by_candidate.get(run.get("run_id"))
             if comparison_match is None:
                 comparison_link = "-"
@@ -2209,7 +2226,7 @@ def create_app(pipeline_root: Path) -> FastAPI:
                 )
             rows.append(
                 "<tr>"
-                f"<td><a href='{report_link}'>{_text(run.get('run_id'))}</a></td>"
+                f"<td><a href='{report_link}'>{_text(run.get('run_id'))}</a>{data_link}</td>"
                 f"<td><span class='badge {badge_class}'>{classification_label}</span></td>"
                 f"<td>{status_label}</td>"
                 f"<td>{_text(run.get('snapshot_id'))}</td>"
