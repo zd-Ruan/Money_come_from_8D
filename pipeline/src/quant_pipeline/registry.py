@@ -11,9 +11,14 @@ def update_registry(path: Path, run_record: dict[str, Any]) -> None:
     run_dir = run_record.get("run_dir")
     if not isinstance(run_dir, str) or not run_dir.strip():
         raise ValueError("run_record.run_dir must be a non-empty string")
+    workspace_root = path.parent.parent
     resolved_dir = Path(run_dir).expanduser()
     if not resolved_dir.is_absolute():
-        resolved_dir = (path.parent / resolved_dir).resolve()
+        candidates = [
+            (workspace_root / resolved_dir).resolve(),
+            (path.parent / resolved_dir).resolve(),
+        ]
+        resolved_dir = next((candidate for candidate in candidates if candidate.is_dir()), candidates[0])
     else:
         resolved_dir = resolved_dir.resolve()
     if not resolved_dir.is_dir():
