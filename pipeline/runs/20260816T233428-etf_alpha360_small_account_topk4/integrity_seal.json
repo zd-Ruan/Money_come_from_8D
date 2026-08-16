@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "algorithm": "sha256",
+  "protected_files": [
+    {
+      "path": "artifact_checksums.json",
+      "size": 36847,
+      "sha256": "d7fa686ccdf6695a8b80e8a90bb8a43c094c1ecd37cf2cf2366c9439ba7fcf92"
+    },
+    {
+      "path": "manifest.json",
+      "size": 3500,
+      "sha256": "8c87eff46e6e45736a89162a08240d106eab3cb153057748300062e03744f684"
+    }
+  ]
+}

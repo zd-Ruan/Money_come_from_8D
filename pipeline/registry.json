@@ -1,6 +1,32 @@
 {
-  "updated_at": "2026-08-14T11:51:40.229701+08:00",
+  "updated_at": "2026-08-16T23:44:25.260159+08:00",
   "runs": [
+    {
+      "run_id": "20260816T233428-etf_alpha360_small_account_topk4",
+      "created_at": "2026-08-16T23:34:28.615485+08:00",
+      "completed_at": "2026-08-16T23:44:25.259156+08:00",
+      "status": "completed",
+      "classification": "research_only",
+      "run_dir": "pipeline/runs/20260816T233428-etf_alpha360_small_account_topk4",
+      "snapshot_id": "20260811-12975e92fa3b",
+      "metrics": {
+        "net_cumulative_return": 2.070085638000002,
+        "benchmark_cumulative_return": 0.28200590761324573,
+        "ic": 0.018910265990816296,
+        "rank_ic": 0.022981538654984333,
+        "max_drawdown": -0.21575548654377585,
+        "relative_wealth_max_drawdown": -0.21233872546003119
+      }
+    },
+    {
+      "run_id": "20260816T233335-etf_alpha360_small_account_topk4",
+      "created_at": "2026-08-16T23:33:35.128932+08:00",
+      "completed_at": "2026-08-16T23:33:35.152295+08:00",
+      "status": "failed",
+      "classification": "invalid",
+      "run_dir": "pipeline/runs/20260816T233335-etf_alpha360_small_account_topk4",
+      "error": "EnvironmentLockError: environment lock mismatch: Python CPython 3.10.9 != CPython 3.11.15; fastapi 0.104.1 != 0.141.1; joblib 1.1.1 != 1.5.3; lightgbm 4.6.0 != 4.7.0; matplotlib 3.5.3 != 3.11.1; numpy 1.26.4 != 2.4.6; plotly 5.9.0 != 6.9.0; pyqlib is missing (expected 0.9.7); scikit-learn 1.2.1 != 1.9.0; scipy 1.15.3 != 1.17.1; uvicorn 0.24.0 != 0.52.1"
+    },
     {
       "run_id": "alpha360_gpu_2005_20260813_v4",
       "created_at": "2026-08-13T22:41:18.655437+08:00",

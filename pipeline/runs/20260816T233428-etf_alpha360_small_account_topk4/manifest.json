@@ -1,0 +1,89 @@
+{
+  "schema_version": 2,
+  "run_id": "20260816T233428-etf_alpha360_small_account_topk4",
+  "created_at": "2026-08-16T23:34:28.615485+08:00",
+  "status": "completed",
+  "classification": "research_only",
+  "snapshot_id": "20260811-12975e92fa3b",
+  "snapshot_manifest": "pipeline/snapshots/20260811-12975e92fa3b/manifest.json",
+  "config": "pipeline/configs/alpha360_small_account_topk4.yaml",
+  "data": {
+    "snapshot_id": "20260811-12975e92fa3b",
+    "source_fingerprint": "12975e92fa3bc8f1672a156d8d5efc76b529654f8ddac44c061dae76319660e9",
+    "snapshot_manifest": "pipeline/snapshots/20260811-12975e92fa3b/manifest.json",
+    "universe_mode": "current_snapshot"
+  },
+  "code": {
+    "pipeline_source_sha256": "2dbb4574a422187c238a57c0c29a782fd6446f782d0cb0e56948d930f9df7e51",
+    "qlib_package_sha256": "c14ea10c80d934dcf30e58c4fef6ce06b081910b26cbd53aab9e9432fbfe73a1",
+    "runtime_code_sha256": "5becde512a5d5367dd81b274ed0bb2477398e7e1152846dc91c18b1924503cf0"
+  },
+  "environment": {
+    "python": "CPython 3.10.9",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "qlib": "0.1.dev1",
+    "lightgbm": "4.6.0",
+    "packages": {
+      "fastapi": "0.104.1",
+      "joblib": "1.1.1",
+      "lightgbm": "4.6.0",
+      "matplotlib": "3.5.3",
+      "numpy": "1.26.4",
+      "pandas": "2.3.3",
+      "plotly": "5.9.0",
+      "pyarrow": "25.0.1",
+      "PyYAML": "6.0.3",
+      "scikit-learn": "1.2.1",
+      "scipy": "1.15.3",
+      "uvicorn": "0.24.0"
+    },
+    "lock": {
+      "schema_version": 1,
+      "filename": "environment.home-rtx2060.lock.json",
+      "sha256": "574c9ecb8dc2f6e7063902b84451391a3d43e3bad8d19d7b3efe4abd24981e73"
+    },
+    "lightgbm_build": {
+      "filename": "lib_lightgbm.dll",
+      "size": 4059648,
+      "sha256": "d2a41567e16b127b2486b417cc25813588fe015a0481e06fe8ce662ebed1ec61"
+    },
+    "opencl_loader": {
+      "available": true,
+      "filename": "OpenCL.dll",
+      "size": 477704,
+      "sha256": "964d08c2b90c03286929fab3311835a4c25fba84b23136aeb4dad2c8372c7679"
+    },
+    "model_device_type": "cpu",
+    "gpu_probe_passed": true
+  },
+  "git": {
+    "available": true,
+    "commit": "0c24f1f90f6a3ba4f5f80384abdf692cc4440f80",
+    "branch": "master",
+    "dirty": true,
+    "status": "M pipeline/registry.json\n?? _build_pit_universe.py\n?? _fold_gap.py\n?? _quant_survivorship.py\n?? _row_impact.py\n?? pipeline/alpha360_topk4_run.log\n?? pipeline/configs/alpha360_small_account_topk4.yaml\n?? pipeline/runs/20260816T233335-etf_alpha360_small_account_topk4/\n?? quant_alpha360_backup_20260813.zip"
+  },
+  "artifacts": {
+    "predictions": "predictions.parquet",
+    "signal_metrics": "signal_metrics.parquet",
+    "raw_factor_metrics": "raw_factor_metrics.parquet",
+    "metrics": "metrics.json",
+    "gates": "gates.json",
+    "report": "report.html",
+    "pretraining_corporate_action_audit": "audits/corporate_actions_pretraining/summary.json",
+    "artifact_checksums": "artifact_checksums.json",
+    "integrity_seal": "integrity_seal.json",
+    "environment_lock": "environment.home-rtx2060.lock.json"
+  },
+  "completed_at": "2026-08-16T23:44:25.259156+08:00",
+  "registry": {
+    "updated": true
+  },
+  "integrity": {
+    "checksum_manifest": "artifact_checksums.json",
+    "checksum_sha256": "d7fa686ccdf6695a8b80e8a90bb8a43c094c1ecd37cf2cf2366c9439ba7fcf92",
+    "artifact_count": 200,
+    "seal_manifest": "integrity_seal.json",
+    "verified": true
+  }
+}

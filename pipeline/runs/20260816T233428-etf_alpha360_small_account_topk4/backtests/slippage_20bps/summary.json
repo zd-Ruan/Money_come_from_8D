@@ -1,0 +1,181 @@
+{
+  "slippage_bps_per_side": 20,
+  "raw_execution_days": 388,
+  "days": 387,
+  "initial_execution_date": "2025-01-03",
+  "evaluation_start_date": "2025-01-06",
+  "evaluation_end_date": "2026-08-11",
+  "alignment_method": "initial_cost_compounded_into_first_realized_return",
+  "net_cumulative_return": 0.42985852349999676,
+  "net_annualized_return": 0.26217934224400685,
+  "benchmark_cumulative_return": 0.28200590761324573,
+  "excess_cumulative_return": 0.11532912212706825,
+  "excess_annualized_return": 0.10512229295907696,
+  "information_ratio": 0.4356158663353299,
+  "excess_hac_t_stat": 0.5560886872575862,
+  "strategy_max_drawdown": -0.3720102617382043,
+  "relative_wealth_max_drawdown": -0.42050743829951187,
+  "beta": 1.1810852462908104,
+  "beta_adjusted_alpha_annualized": 0.07331174576679662,
+  "strategy_benchmark_correlation": 0.6339953993203169,
+  "average_daily_turnover": 0.0741346396944763,
+  "total_cost": 2385.02953,
+  "fill_rate": 0.33793677688660884,
+  "notional_fill_rate": 0.33793677688660884,
+  "execution": {
+    "engine": "raw_share_daily_v1",
+    "research_only": true,
+    "signal_timing": "signal_after_t_executes_next_session_close",
+    "selection_policy": "frozen_topk_dropout_no_execution_day_substitution",
+    "price_limit_policy": "ohlc_proven_wide_tier_otherwise_10_percent_fail_closed",
+    "corporate_action_policy": "record_date_entitlement_off_balance_sheet_ex_date_receivable_and_share_adjustment_payment_date_cash",
+    "initial_account": 20000.0,
+    "final_account": 28597.170469999983,
+    "net_cumulative_return": 0.4298585234999992,
+    "benchmark_cumulative_return": 0.2688874025468566,
+    "intent_count": 553,
+    "filled_intent_count": 146,
+    "zero_fill_intent_count": 407,
+    "intent_fill_rate": 0.2640144665461121,
+    "zero_fill_intent_rate": 0.7359855334538878,
+    "target_notional": 2427074.4,
+    "fill_notional": 820197.7,
+    "fill_rate": 0.33793677688660884,
+    "target_notional_coverage": 1.0,
+    "commission_total": 744.63413,
+    "commission_effective_bps": 9.078715168306374,
+    "slippage_total": 1640.3954,
+    "corporate_action_count": 547,
+    "pending_dividend_entitlement_count": 0,
+    "unpaid_receivable": 0.0,
+    "held_missing_prediction_event_count": 7,
+    "held_missing_prediction_events": [
+      {
+        "signal_date": "2025-03-26",
+        "symbol": "SH517400",
+        "action": "held"
+      },
+      {
+        "signal_date": "2025-04-29",
+        "symbol": "SH517390",
+        "action": "held"
+      },
+      {
+        "signal_date": "2025-04-30",
+        "symbol": "SH517390",
+        "action": "held"
+      },
+      {
+        "signal_date": "2026-07-01",
+        "symbol": "SZ159121",
+        "action": "held"
+      },
+      {
+        "signal_date": "2026-08-05",
+        "symbol": "SH589320",
+        "action": "held"
+      },
+      {
+        "signal_date": "2026-08-06",
+        "symbol": "SH589320",
+        "action": "held"
+      },
+      {
+        "signal_date": "2026-08-07",
+        "symbol": "SH589320",
+        "action": "held"
+      }
+    ],
+    "missing_market_data_carry_forward_count": 0,
+    "missing_market_data_carry_forward_events": [],
+    "nav_reconciled": true,
+    "symbol_attribution_reconciled": true,
+    "symbol_attribution_max_abs_reconciliation_error": 1.057287590811029e-11,
+    "symbol_attribution_total_net_pnl": 8597.17047,
+    "max_single_etf_abs_contribution_share": 0.06864116851589687,
+    "max_single_etf_gross_abs_contribution_share": 0.06864116851589687,
+    "max_single_etf_gross_abs_contribution_symbol": "SZ159315",
+    "max_single_etf_gross_abs_contribution_numerator_cny": 12135.726300000015,
+    "single_etf_gross_abs_contribution_denominator_cny": 176799.52953,
+    "max_single_etf_net_abs_contribution_share": 0.09602474558409801,
+    "max_single_etf_net_abs_contribution_symbol": "SZ159315",
+    "max_single_etf_net_abs_contribution_numerator_cny": 3385.7263,
+    "single_etf_net_abs_contribution_denominator_cny": 35258.89373000001,
+    "symbol_attribution_concentration": {
+      "zero_denominator_policy": "concentration_null_fail_closed",
+      "gross_abs": {
+        "symbol": "SZ159315",
+        "numerator_cny": 12135.726300000015,
+        "denominator_cny": 176799.52953,
+        "share": 0.06864116851589687
+      },
+      "net_abs": {
+        "symbol": "SZ159315",
+        "numerator_cny": 3385.7263,
+        "denominator_cny": 35258.89373000001,
+        "share": 0.09602474558409801
+      }
+    },
+    "config": {
+      "initial_cash": 20000.0,
+      "topk": 4,
+      "n_drop": 1,
+      "hold_thresh": 20,
+      "risk_degree": 0.9,
+      "commission_bps_per_side": 3.0,
+      "min_commission": 5.0,
+      "slippage_bps_per_side": 20.0,
+      "lot_size": 100,
+      "max_daily_volume_participation": 0.05,
+      "standard_limit_ratio": 0.1,
+      "wide_limit_ratio": 0.2,
+      "price_tick": 0.001
+    },
+    "total_cost": 2385.02953,
+    "price_limit_audit": {
+      "mode": "ohlc_proven_tier_conservative",
+      "standard_limit_ratio": 0.1,
+      "wide_limit_ratio": 0.2,
+      "research_only": true
+    },
+    "corporate_action_audit": {
+      "audit_passed": true,
+      "material_factor_jump_count": 851,
+      "corporate_action_count": 851,
+      "matched_event_count": 851,
+      "missing_action_count": 0,
+      "extra_action_count": 0,
+      "identity_mismatch_count": 0,
+      "presence_only_count": 0,
+      "identity_verified_count": 851,
+      "raw_price_identity_requested": true,
+      "factor_start_date": "2005-02-23",
+      "factor_end_date": "2026-08-11",
+      "rtol": 1e-10,
+      "atol": 1e-12,
+      "economic_scope": "standard ex-right adjustment identity checked; legal holding return is a separate diagnostic"
+    },
+    "zero_fill_order_rate": 0.7359855334538878,
+    "zero_fill_order_count": 407,
+    "notional_fill_rate": 0.33793677688660884
+  },
+  "average_cash_utilization": 0.8818640619718872,
+  "terminal_account": 28597.170469999983,
+  "max_drawdown": -0.3720102617382043,
+  "single_etf_abs_contribution_share": 0.06864116851589687,
+  "symbol_attribution_concentration": {
+    "zero_denominator_policy": "concentration_null_fail_closed",
+    "gross_abs": {
+      "symbol": "SZ159315",
+      "numerator_cny": 12135.726300000015,
+      "denominator_cny": 176799.52953,
+      "share": 0.06864116851589687
+    },
+    "net_abs": {
+      "symbol": "SZ159315",
+      "numerator_cny": 3385.7263,
+      "denominator_cny": 35258.89373000001,
+      "share": 0.09602474558409801
+    }
+  }
+}

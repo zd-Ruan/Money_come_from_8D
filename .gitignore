@@ -13,6 +13,8 @@ dist/
 *.pkl
 *.hd5
 *.csv
+*.log
+*.zip
 !pipeline/snapshots/*/universe.csv
 !pipeline/snapshots/*/corporate_actions.csv
 !pipeline/snapshots/*/corporate_action_report.csv
