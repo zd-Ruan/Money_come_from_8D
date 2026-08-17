@@ -1557,6 +1557,10 @@ def run_pipeline(
             from qlib.contrib.data.handler import Alpha360
 
             handler = Alpha360(**handler_kwargs)
+        elif feature_mode == "alpha191":
+            from quant_pipeline.alpha191_handler import Alpha191
+
+            handler = Alpha191(**handler_kwargs)
         else:
             handler = Alpha158(**handler_kwargs)
         dataset = DatasetH(handler=handler, segments={})

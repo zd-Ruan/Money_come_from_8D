@@ -57,11 +57,11 @@ def validate_config(config: dict[str, Any]) -> None:
     model = config["model"]
     strategy = config["strategy"]
     gates = config["gates"]
-    if features.get("mode") not in {"alpha158", "alpha360", "alpha158_plus_original"}:
+    if features.get("mode") not in {"alpha158", "alpha360", "alpha158_plus_original", "alpha191"}:
         raise ValueError(
-            "features.mode must be alpha158, alpha360, or alpha158_plus_original"
+            "features.mode must be alpha158, alpha360, alpha158_plus_original, or alpha191"
         )
-    if features["mode"] in {"alpha158", "alpha360"} and features.get("families"):
+    if features["mode"] in {"alpha158", "alpha360", "alpha191"} and features.get("families"):
         raise ValueError("standard Alpha feature modes must not select original factor families")
     if int(data["label_horizon_bars"]) < 1:
         raise ValueError("label_horizon_bars must be positive")

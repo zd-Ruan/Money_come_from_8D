@@ -1,0 +1,13 @@
+# Alpha191 → Qlib provider 导出配置（全周期 2005-2026，与 Alpha360 参考运行同期对齐）
+alpha191:
+  data_dir: qlib/data/cn_etf
+  universe: qlib/data/cn_etf/trainable_universe_2015.csv
+  benchmark: SH510300
+  start_date: "2005-01-01"
+  end_date: "2026-08-11"
+  min_days: 60
+  drop_paused: true
+  output_dir: qlib/pipeline/runs/alpha191
+  factor_numbers: []
+  horizons: [1, 5]
+  recent_years: [0, 2]

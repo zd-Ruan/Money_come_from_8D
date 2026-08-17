@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "python": {
+    "implementation": "CPython",
+    "version": "3.11.15"
+  },
+  "packages": {
+    "fastapi": "0.141.1",
+    "joblib": "1.5.3",
+    "lightgbm": "4.6.0",
+    "matplotlib": "3.11.1",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "plotly": "6.9.0",
+    "pyarrow": "25.0.1",
+    "pyqlib": "0.1.dev5",
+    "PyYAML": "6.0.3",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.17.1",
+    "uvicorn": "0.52.1"
+  }
+}
