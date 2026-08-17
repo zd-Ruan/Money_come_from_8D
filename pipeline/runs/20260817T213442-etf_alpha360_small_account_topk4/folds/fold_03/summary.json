@@ -1,0 +1,191 @@
+{
+  "fold": 3,
+  "train_start": "2005-02-23",
+  "train_end": "2024-12-25",
+  "valid_start": "2024-12-30",
+  "valid_end": "2025-07-09",
+  "test_start": "2025-07-14",
+  "test_end": "2025-10-16",
+  "purge_bars": 2,
+  "rows": {
+    "train": 390713,
+    "valid": 63873,
+    "test_features": 41327,
+    "test_labels": 41327
+  },
+  "instruments": {
+    "train": 868,
+    "valid": 744,
+    "test": 824
+  },
+  "best_iterations": [
+    51,
+    49,
+    42
+  ],
+  "device_type": "cpu",
+  "ic": -0.043052826735044125,
+  "rank_ic": -0.050753537445834856,
+  "prediction_seed_std_mean": 0.006112837044866435,
+  "effective_test_end": "2025-10-16",
+  "portfolio": {
+    "days": 63,
+    "net_cumulative_return": 0.23502459750000027,
+    "benchmark_cumulative_return": 0.13781265326140124,
+    "excess_cumulative_return": 0.0854375665096998,
+    "initial_execution_date": "2025-07-15",
+    "evaluation_start_date": "2025-07-16",
+    "evaluation_end_date": "2025-10-20",
+    "alignment_method": "initial_cost_compounded_into_first_realized_return",
+    "reset_cash": true,
+    "start": "2025-07-15",
+    "end": "2025-10-20",
+    "complete_for_gate": true,
+    "execution": {
+      "engine": "raw_share_daily_v1",
+      "research_only": true,
+      "signal_timing": "signal_after_t_executes_next_session_close",
+      "selection_policy": "frozen_topk_dropout_no_execution_day_substitution",
+      "price_limit_policy": "ohlc_proven_wide_tier_otherwise_10_percent_fail_closed",
+      "corporate_action_policy": "record_date_entitlement_off_balance_sheet_ex_date_receivable_and_share_adjustment_payment_date_cash",
+      "initial_account": 20000.0,
+      "final_account": 24700.491950000003,
+      "net_cumulative_return": 0.23502459750000027,
+      "benchmark_cumulative_return": 0.13781265326140124,
+      "intent_count": 90,
+      "filled_intent_count": 25,
+      "zero_fill_intent_count": 65,
+      "intent_fill_rate": 0.2777777777777778,
+      "zero_fill_intent_rate": 0.7222222222222222,
+      "target_notional": 312352.30000000005,
+      "fill_notional": 101416.09999999999,
+      "fill_rate": 0.3246849791085258,
+      "policy_rejection_count": 64,
+      "policy_rejection_rate": 0.7111111111111111,
+      "market_rejection_count": 1,
+      "market_rejection_rate": 0.038461538461538464,
+      "submitted_order_count": 26,
+      "submitted_order_fill_rate": 1.0,
+      "target_notional_coverage": 0.9888888888888889,
+      "commission_total": 125.0,
+      "commission_effective_bps": 12.325459172656018,
+      "slippage_total": 50.70805,
+      "corporate_action_count": 86,
+      "pending_dividend_entitlement_count": 0,
+      "unpaid_receivable": 0.0,
+      "held_missing_prediction_event_count": 6,
+      "held_missing_prediction_events": [
+        {
+          "signal_date": "2025-07-15",
+          "symbol": "SH516620",
+          "action": "held"
+        },
+        {
+          "signal_date": "2025-07-16",
+          "symbol": "SH516620",
+          "action": "held"
+        },
+        {
+          "signal_date": "2025-07-17",
+          "symbol": "SH516620",
+          "action": "held"
+        },
+        {
+          "signal_date": "2025-07-21",
+          "symbol": "SH516620",
+          "action": "held"
+        },
+        {
+          "signal_date": "2025-07-22",
+          "symbol": "SH516620",
+          "action": "held"
+        },
+        {
+          "signal_date": "2025-07-24",
+          "symbol": "SH516620",
+          "action": "held"
+        }
+      ],
+      "missing_market_data_carry_forward_count": 1,
+      "missing_market_data_carry_forward_events": [
+        {
+          "date": "2025-09-11 00:00:00",
+          "symbol": "SZ159583",
+          "shares": 2300.0,
+          "price": 2.011,
+          "source": "previous_raw_close"
+        }
+      ],
+      "nav_reconciled": true,
+      "symbol_attribution_reconciled": true,
+      "symbol_attribution_max_abs_reconciliation_error": 5.6274984672199935e-12,
+      "symbol_attribution_total_net_pnl": 4700.49195,
+      "max_single_etf_abs_contribution_share": 0.1883943766327902,
+      "max_single_etf_gross_abs_contribution_share": 0.1883943766327902,
+      "max_single_etf_gross_abs_contribution_symbol": "SZ159388",
+      "max_single_etf_gross_abs_contribution_numerator_cny": 4963.313200000001,
+      "single_etf_gross_abs_contribution_denominator_cny": 26345.336250000004,
+      "max_single_etf_net_abs_contribution_share": 0.26604063410642775,
+      "max_single_etf_net_abs_contribution_symbol": "SZ159388",
+      "max_single_etf_net_abs_contribution_numerator_cny": 1358.2552000000005,
+      "single_etf_net_abs_contribution_denominator_cny": 5105.442649999998,
+      "symbol_attribution_concentration": {
+        "zero_denominator_policy": "concentration_null_fail_closed",
+        "gross_abs": {
+          "symbol": "SZ159388",
+          "numerator_cny": 4963.313200000001,
+          "denominator_cny": 26345.336250000004,
+          "share": 0.1883943766327902
+        },
+        "net_abs": {
+          "symbol": "SZ159388",
+          "numerator_cny": 1358.2552000000005,
+          "denominator_cny": 5105.442649999998,
+          "share": 0.26604063410642775
+        }
+      },
+      "config": {
+        "initial_cash": 20000.0,
+        "topk": 4,
+        "n_drop": 1,
+        "hold_thresh": 20,
+        "risk_degree": 0.9,
+        "commission_bps_per_side": 3.0,
+        "min_commission": 5.0,
+        "slippage_bps_per_side": 5.0,
+        "lot_size": 100,
+        "max_daily_volume_participation": 0.05,
+        "standard_limit_ratio": 0.1,
+        "wide_limit_ratio": 0.2,
+        "price_tick": 0.001
+      },
+      "total_cost": 175.70805,
+      "price_limit_audit": {
+        "mode": "ohlc_proven_tier_conservative",
+        "standard_limit_ratio": 0.1,
+        "wide_limit_ratio": 0.2,
+        "research_only": true
+      },
+      "corporate_action_audit": {
+        "audit_passed": true,
+        "material_factor_jump_count": 851,
+        "corporate_action_count": 851,
+        "matched_event_count": 851,
+        "missing_action_count": 0,
+        "extra_action_count": 0,
+        "identity_mismatch_count": 0,
+        "presence_only_count": 0,
+        "identity_verified_count": 851,
+        "raw_price_identity_requested": true,
+        "factor_start_date": "2005-02-23",
+        "factor_end_date": "2026-08-11",
+        "rtol": 1e-10,
+        "atol": 1e-12,
+        "economic_scope": "standard ex-right adjustment identity checked; legal holding return is a separate diagnostic"
+      },
+      "zero_fill_order_rate": 0.7222222222222222,
+      "zero_fill_order_count": 65,
+      "notional_fill_rate": 0.3246849791085258
+    }
+  }
+}

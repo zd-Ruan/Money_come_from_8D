@@ -92,6 +92,12 @@ class FrozenIntentTests(unittest.TestCase):
         self.assertEqual(order["reason"], "price_limit_buy")
         self.assertNotIn("B", result.executions["symbol"].tolist())
         self.assertEqual(result.summary["zero_fill_intent_count"], 1)
+        # price_limit is a MARKET rejection: the order was submitted but the
+        # market could not fill it, so it stays in the submitted denominator.
+        self.assertEqual(result.summary["market_rejection_count"], 1)
+        self.assertEqual(result.summary["policy_rejection_count"], 0)
+        self.assertEqual(result.summary["submitted_order_count"], 1)
+        self.assertEqual(result.summary["submitted_order_fill_rate"], 0.0)
 
     def test_wide_tier_must_be_proven_by_range_and_close_controls_rejection(self):
         dates = calendar(2)
@@ -267,6 +273,13 @@ class ExecutionMechanicsTests(unittest.TestCase):
         ].iloc[0]
         self.assertEqual(sell["fill_shares"], 0)
         self.assertEqual(sell["reason"], "hold_threshold_t_plus_one")
+        # Layered execution accounting: hold_threshold and below_round_lot are
+        # POLICY rejections (strategy/account declined to submit), NOT market
+        # execution failures, and must not drag down the submitted fill rate.
+        self.assertEqual(result.summary["policy_rejection_count"], 2)
+        self.assertEqual(result.summary["market_rejection_count"], 0)
+        self.assertEqual(result.summary["submitted_order_count"], 1)
+        self.assertEqual(result.summary["submitted_order_fill_rate"], 1.0)
 
     def test_repeated_rotation_keeps_risky_value_at_configured_nav_fraction(self):
         dates = calendar(5)

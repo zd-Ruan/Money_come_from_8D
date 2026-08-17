@@ -1,0 +1,79 @@
+{
+  "status": "research_only",
+  "promotion_eligible": false,
+  "passed": 10,
+  "total": 12,
+  "checks": [
+    {
+      "name": "data_valid",
+      "passed": true,
+      "value": true
+    },
+    {
+      "name": "point_in_time_universe",
+      "passed": false,
+      "value": "current_snapshot",
+      "blocking_for_promotion": true
+    },
+    {
+      "name": "minimum_test_days",
+      "passed": true,
+      "value": 387,
+      "threshold": 252
+    },
+    {
+      "name": "prediction_coverage",
+      "passed": true,
+      "value": 1.0,
+      "threshold": 0.95
+    },
+    {
+      "name": "fill_rate",
+      "passed": true,
+      "value": 1.0,
+      "threshold": 0.95
+    },
+    {
+      "name": "zero_fill_order_rate",
+      "passed": true,
+      "value": 0.0070921985815602835,
+      "threshold": 0.05
+    },
+    {
+      "name": "minimum_complete_folds",
+      "passed": true,
+      "value": 6,
+      "threshold": 4
+    },
+    {
+      "name": "fold_positive_excess_ratio",
+      "passed": true,
+      "value": 0.6666666666666666,
+      "threshold": 0.6
+    },
+    {
+      "name": "excess_hac_t_stat",
+      "passed": true,
+      "value": 2.653413237219188,
+      "threshold": 1.96
+    },
+    {
+      "name": "rank_ic_hac_t_stat",
+      "passed": false,
+      "value": 1.8015938805526042,
+      "threshold": 1.96
+    },
+    {
+      "name": "max_drawdown",
+      "passed": true,
+      "value": -0.21575548654377585,
+      "threshold": 0.25
+    },
+    {
+      "name": "stress_positive_excess",
+      "passed": true,
+      "value": 0.8789345580977528,
+      "threshold": 0
+    }
+  ]
+}

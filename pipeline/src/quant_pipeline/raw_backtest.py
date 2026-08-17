@@ -141,6 +141,39 @@ def _integer(name: str, value: Any, *, minimum: int) -> int:
     return result
 
 
+# ---------------------------------------------------------------------------
+# Execution layering: desired_rebalance -> eligible/submitted -> filled.
+#
+# ``policy`` rejections are the strategy or account deliberately not trading:
+# the order was never submitted to the market, so it must NOT count against
+# market fill quality.  ``market`` failures are orders that were submitted but
+# the market could not execute them (price limit, missing data, volume cap).
+#
+# This split fixes the misleading ``fill_rate`` / ``zero_fill_order_rate``
+# gates: a position held because ``hold_thresh`` has not elapsed is a policy
+# decision, not a market execution failure.
+POLICY_BLOCKED_REASONS = frozenset(
+    {
+        "hold_threshold_t_plus_one",   # strategy hold policy: position not yet held hold_thresh bars
+        "below_round_lot",             # account lot-sizing: target < 1 lot -> nothing to submit
+        "insufficient_cash",           # joint buy/sell cash budget could not fund the order
+        "partial_joint_cash_budget",   # joint budget limited the submitted amount
+        "partial_hold_threshold",      # only the eligible (held) portion was submitted; the rest is policy-blocked
+    }
+)
+MARKET_FAILURE_REASONS = frozenset(
+    {
+        "price_limit_buy",
+        "price_limit_sell",
+        "missing_market_data",
+        "missing_previous_price_reference",
+        "corporate_action_price_reference",
+        "volume_limit_below_round_lot",
+        "partial_volume_limit",
+    }
+)
+
+
 @dataclass(frozen=True)
 class RawBacktestConfig:
     """Execution and top-k policy for a CNY cash account."""
@@ -1489,6 +1522,29 @@ def run_raw_backtest(
     fill_notional = float(executions["fill_notional"].sum()) if not executions.empty else 0.0
     filled_count = int((executions["fill_shares"] > 0).sum()) if not executions.empty else 0
     zero_count = int((executions["fill_shares"] <= 0).sum()) if not executions.empty else 0
+    # Execution layering: split policy rejections (strategy/account declined to
+    # submit) from market failures (submitted but the market could not fill).
+    policy_rejected = (
+        executions["reason"].isin(POLICY_BLOCKED_REASONS) if not executions.empty else pd.Series(dtype=bool)
+    )
+    market_failed = (
+        executions["reason"].isin(MARKET_FAILURE_REASONS) if not executions.empty else pd.Series(dtype=bool)
+    )
+    submitted_mask = ~policy_rejected
+    submitted_count = int(submitted_mask.sum())
+    policy_rejection_count = int(policy_rejected.sum())
+    market_rejection_count = int(market_failed.sum())
+    submitted_target_notional = (
+        float(executions.loc[submitted_mask, "target_notional"].fillna(0.0).sum())
+        if submitted_count
+        else 0.0
+    )
+    submitted_fill_notional = (
+        float(executions.loc[submitted_mask, "fill_notional"].sum()) if submitted_count else 0.0
+    )
+    submitted_order_fill_rate = (
+        submitted_fill_notional / submitted_target_notional if submitted_target_notional > 0 else 0.0
+    )
     summary = {
         "engine": "raw_share_daily_v1",
         "research_only": True,
@@ -1511,6 +1567,12 @@ def run_raw_backtest(
         "target_notional": target_notional,
         "fill_notional": fill_notional,
         "fill_rate": fill_notional / target_notional if target_notional > 0 else 0.0,
+        "policy_rejection_count": policy_rejection_count,
+        "policy_rejection_rate": policy_rejection_count / len(executions) if len(executions) else 0.0,
+        "market_rejection_count": market_rejection_count,
+        "market_rejection_rate": market_rejection_count / submitted_count if submitted_count else 0.0,
+        "submitted_order_count": submitted_count,
+        "submitted_order_fill_rate": submitted_order_fill_rate,
         "target_notional_coverage": (
             float(executions["target_notional"].notna().mean()) if not executions.empty else 0.0
         ),

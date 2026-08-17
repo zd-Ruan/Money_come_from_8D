@@ -975,6 +975,13 @@ def run_backtest(
     execution_summary["zero_fill_order_rate"] = execution_summary["zero_fill_intent_rate"]
     execution_summary["zero_fill_order_count"] = execution_summary["zero_fill_intent_count"]
     execution_summary["notional_fill_rate"] = execution_summary["fill_rate"]
+    execution_summary["submitted_order_fill_rate"] = execution_summary.get(
+        "submitted_order_fill_rate", execution_summary["fill_rate"]
+    )
+    execution_summary["market_rejection_rate"] = execution_summary.get(
+        "market_rejection_rate", execution_summary["zero_fill_intent_rate"]
+    )
+    execution_summary["policy_rejection_rate"] = execution_summary.get("policy_rejection_rate", 0.0)
     return report, positions, indicator_frame, indicator_object, executions, execution_summary
 
 
@@ -1027,6 +1034,9 @@ def summarize_backtest(
         "total_cost": finite(qlib_total_cost),
         "fill_rate": finite(execution_summary.get("fill_rate")),
         "notional_fill_rate": finite(execution_summary.get("notional_fill_rate")),
+        "submitted_order_fill_rate": finite(execution_summary.get("submitted_order_fill_rate")),
+        "market_rejection_rate": finite(execution_summary.get("market_rejection_rate")),
+        "policy_rejection_rate": finite(execution_summary.get("policy_rejection_rate")),
         "execution": execution_summary,
         "average_cash_utilization": finite(float((1.0 - report["cash"] / report["account"]).mean())),
         "terminal_account": finite(float(report["account"].iloc[-1])),
@@ -1279,16 +1289,16 @@ def evaluate_gates(
         },
         {
             "name": "fill_rate",
-            "passed": base["fill_rate"] is not None
-            and base["fill_rate"] >= float(gates["min_fill_rate"]),
-            "value": base["fill_rate"],
+            "passed": base["submitted_order_fill_rate"] is not None
+            and base["submitted_order_fill_rate"] >= float(gates["min_fill_rate"]),
+            "value": base["submitted_order_fill_rate"],
             "threshold": gates["min_fill_rate"],
         },
         {
             "name": "zero_fill_order_rate",
-            "passed": base["execution"]["zero_fill_order_rate"] is not None
-            and base["execution"]["zero_fill_order_rate"] <= float(gates["max_zero_fill_order_rate"]),
-            "value": base["execution"]["zero_fill_order_rate"],
+            "passed": base["execution"]["market_rejection_rate"] is not None
+            and base["execution"]["market_rejection_rate"] <= float(gates["max_zero_fill_order_rate"]),
+            "value": base["execution"]["market_rejection_rate"],
             "threshold": gates["max_zero_fill_order_rate"],
         },
         {
