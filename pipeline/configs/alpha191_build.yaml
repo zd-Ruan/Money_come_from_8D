@@ -1,0 +1,22 @@
+# Alpha191 因子构建与研究配置
+#
+# 数据来源：data/cn_etf/normalized 下的逐 ETF 复权日线 CSV（与主流水线同源）。
+# 运行方式（在仓库根目录，使用已安装 qlib 的环境）：
+#   $env:PYTHONPATH = (Resolve-Path .\qlib\pipeline\src).Path
+#   C:\Exception\quant\python.exe -m quant_pipeline.alpha191_research --config .\qlib\pipeline\configs\alpha191_build.yaml
+
+alpha191:
+  data_dir: qlib/data/cn_etf
+  universe: qlib/data/cn_etf/trainable_universe_2015.csv
+  benchmark: SH510300
+  start_date: "2015-01-01"
+  end_date: "2026-08-12"
+  min_days: 60
+  drop_paused: true
+  output_dir: qlib/pipeline/runs/alpha191
+  # 留空则计算全部 191 个因子；可指定子集，如 [1, 2, 101]
+  factor_numbers: []
+  # 前瞻收益天数（自然对齐到交易日历）：1 日与 5 日
+  horizons: [1, 5]
+  # IC 报告的时间窗口：0=全样本，2=最近 2 年
+  recent_years: [0, 2]
